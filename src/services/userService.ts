@@ -47,11 +47,9 @@ class GoogleSheetsService {
   }
 }
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
-const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/google-sheets-proxy`;
-const sheetsService = new GoogleSheetsService(EDGE_FUNCTION_URL);
+const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
+const sheetsService = new GoogleSheetsService(SCRIPT_URL);
 
 export async function getUsers(): Promise<User[]> {
   try {

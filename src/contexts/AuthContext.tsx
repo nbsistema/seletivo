@@ -86,8 +86,7 @@ class GoogleSheetsService {
   }
 }
 
-// URL do seu Google Apps Script (substitua pela sua URL)
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzeUN52MaVkpQsORTIIiAkhHSVrlVR82UrISGLOoeyWsHCJlseTPS1Te9Mst24AcfpBhA/exec';
+const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
 const sheetsService = new GoogleSheetsService(SCRIPT_URL);
 
 export function AuthProvider({ children }: { children: ReactNode }) {

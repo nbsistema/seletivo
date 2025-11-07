@@ -47,7 +47,7 @@ class GoogleSheetsService {
   private scriptUrl: string;
 
   constructor() {
-    this.scriptUrl = 'https://script.google.com/macros/s/AKfycbzeUN52MaVkpQsORTIIiAkhHSVrlVR82UrISGLOoeyWsHCJlseTPS1Te9Mst24AcfpBhA/exec';
+    this.scriptUrl = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
   }
 
   async fetchData(action: string, data?: any): Promise<any> {
