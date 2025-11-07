@@ -31,7 +31,7 @@ class GoogleSheetsService {
   async fetchData(action: string, data?: any): Promise<any> {
     try {
       if (!this.scriptUrl) {
-        throw new Error('URL do Google Script não configurada');
+        throw new Error('URL do Google Script não configurada. Verifique o arquivo .env');
       }
 
       const url = new URL(this.scriptUrl);
@@ -43,19 +43,33 @@ class GoogleSheetsService {
         });
       }
 
+      console.log('🔄 Chamando Google Apps Script:', url.toString());
+
       const response = await fetch(url.toString(), {
         method: 'GET',
-        redirect: 'follow'
+        mode: 'cors',
+        redirect: 'follow',
+        headers: {
+          'Accept': 'application/json'
+        }
       });
 
+      console.log('📡 Resposta recebida - Status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Erro na resposta:', errorText);
+        throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
       }
 
       const result = await response.json();
+      console.log('✅ Dados recebidos:', result);
       return result;
     } catch (error) {
-      console.error('Erro na comunicação com Google Apps Script:', error);
+      console.error('❌ Erro na comunicação com Google Apps Script:', error);
+      console.error('🔍 URL configurada:', this.scriptUrl);
+      console.error('🔍 Action:', action);
+      console.error('🔍 Data:', data);
       throw error;
     }
   }
