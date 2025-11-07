@@ -47,11 +47,15 @@ class GoogleSheetsService {
   private scriptUrl: string;
 
   constructor() {
-    this.scriptUrl = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
+    this.scriptUrl = import.meta.env.VITE_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbzhoJbqiSk0DST3X1-sZ71ZDKcbVRPMRU8SVg4AlifCYsm6iPMFYjrX1_ylyCSL5GN5lQ/exec';
   }
 
   async fetchData(action: string, data?: any): Promise<any> {
     try {
+      if (!this.scriptUrl) {
+        throw new Error('URL do Google Script não configurada');
+      }
+
       const url = new URL(this.scriptUrl);
       url.searchParams.append('action', action);
 
