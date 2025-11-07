@@ -123,9 +123,23 @@ export async function deactivateUser(id: string): Promise<void> {
 
 export async function assignCandidates(request: AssignmentRequest): Promise<void> {
   try {
-    await sheetsService.fetchData('assignCandidates', request);
+    console.log('🔵 Alocando candidatos:', request);
+
+    const result = await sheetsService.fetchData('assignCandidates', {
+      candidateIds: request.candidateIds.join(','),
+      analystEmail: request.analystId,
+      adminEmail: request.adminId
+    });
+
+    console.log('✅ Alocação concluída:', result);
+
+    if (result.error) {
+      throw new Error(result.error);
+    }
+
+    return result;
   } catch (error) {
-    console.error('Erro ao atribuir candidatos:', error);
+    console.error('❌ Erro ao atribuir candidatos:', error);
     throw error;
   }
 }

@@ -142,10 +142,50 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
   return (
     <div className="flex flex-col h-full bg-slate-50">
       <div className="p-4 bg-white border-b border-slate-200">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-slate-800">{candidate.NOMECOMPLETO || candidate.name}</h2>
+          {candidate.NOMESOCIAL && (
+            <p className="text-sm text-slate-600 mt-1">Nome Social: {candidate.NOMESOCIAL}</p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-slate-50 rounded-lg">
+          <div>
+            <p className="text-xs text-slate-500 uppercase font-semibold">Inscrição</p>
+            <p className="text-sm text-slate-800 font-medium">{candidate.registration_number}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase font-semibold">CPF</p>
+            <p className="text-sm text-slate-800 font-medium">{candidate.CPF}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase font-semibold">Área de Atuação</p>
+            <p className="text-sm text-slate-800 font-medium">{candidate.AREAATUACAO}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase font-semibold">Cargo Pretendido</p>
+            <p className="text-sm text-slate-800 font-medium">{candidate.CARGOPRETENDIDO}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase font-semibold">Vaga PCD</p>
+            <p className="text-sm text-slate-800 font-medium">{candidate.VAGAPCD || 'Não'}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 uppercase font-semibold">Status</p>
+            <p className="text-sm text-slate-800 font-medium">
+              {candidate.status === 'concluido'
+                ? 'Concluído'
+                : candidate.status === 'em_analise'
+                ? 'Em Análise'
+                : 'Pendente'}
+            </p>
+          </div>
+        </div>
+
         <div className="mb-3">
-          <h2 className="text-lg font-bold text-slate-800">Documentos do Candidato</h2>
-          <p className="text-sm text-slate-600 mt-1">
-            {candidate.AREAATUACAO} • {availableDocs.length} documento(s) disponível(s)
+          <h3 className="text-sm font-bold text-slate-700 mb-2">Documentos</h3>
+          <p className="text-xs text-slate-600">
+            {availableDocs.length} documento(s) disponível(s)
           </p>
         </div>
 
