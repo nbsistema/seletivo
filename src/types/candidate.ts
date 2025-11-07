@@ -20,19 +20,25 @@ export interface Candidate {
   ESPECIALIZACOESCURSOS?: string;
   
   // Sistema de triagem
-  status: 'pendente' | 'em_analise' | 'concluido';
+  Status?: 'pendente' | 'em_analise' | 'concluido';  // Coluna da planilha
+  status?: 'pendente' | 'em_analise' | 'concluido';   // Compatibilidade
   status_triagem?: 'Classificado' | 'Desclassificado' | 'Revisar';
   data_hora_triagem?: string;
   analista_triagem?: string;
-  assigned_to?: string;
-  assigned_by?: string;
-  assigned_at?: string;
+
+  // Alocação (Colunas da planilha)
+  assigned_to?: string;      // Email do analista alocado
+  assigned_at?: string;       // Data/hora da alocação
+  assigned_by?: string;       // Email do admin que alocou
+
+  // Controle adicional
   priority?: number;
   notes?: string;
-  
-  // Timestamps
-  created_at?: string;
-  updated_at?: string;
+
+  // Timestamps (Colunas da planilha)
+  DataCadastro?: string;      // Data de cadastro na planilha
+  created_at?: string;        // Compatibilidade
+  updated_at?: string;        // Última atualização
 }
 
 export interface AnalystSession {

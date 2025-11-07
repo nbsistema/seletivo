@@ -568,11 +568,18 @@ function assignCandidates(e) {
     const analystEmail = params.analystEmail || params.analystId || e.parameter.analystEmail || e.parameter.analystId;
     const adminEmail = params.adminEmail || params.adminId || e.parameter.adminEmail || e.parameter.adminId;
 
+    Logger.log('📥 assignCandidates recebido:');
+    Logger.log('  candidateIds: ' + candidateIds);
+    Logger.log('  analystEmail: ' + analystEmail);
+    Logger.log('  adminEmail: ' + adminEmail);
+
     if (!candidateIds || !analystEmail) {
       return createResponse({ error: 'IDs dos candidatos e email do analista são obrigatórios' }, 400);
     }
 
-    const ids = typeof candidateIds === 'string' ? candidateIds.split(',') : candidateIds;
+    const ids = typeof candidateIds === 'string' ? candidateIds.split(',').map(id => id.trim()) : candidateIds;
+    Logger.log('🔢 IDs processados: ' + ids.join(', '));
+
     const ss = getSpreadsheet();
     const candidateSheet = ss.getSheetByName(SHEET_CANDIDATOS);
 
@@ -582,44 +589,91 @@ function assignCandidates(e) {
 
     const data = candidateSheet.getDataRange().getValues();
     const headers = data[0];
-    const regNumIndex = headers.indexOf('registration_number') >= 0 ?
-                        headers.indexOf('registration_number') :
-                        headers.indexOf('id');
+
+    // Procura por várias colunas possíveis de ID
+    const cpfIndex = headers.indexOf('CPF');
+    const regNumIndex = headers.indexOf('registration_number');
+    const idIndex = headers.indexOf('id');
+
     const assignedToIndex = headers.indexOf('assigned_to');
     const assignedByIndex = headers.indexOf('assigned_by');
     const assignedAtIndex = headers.indexOf('assigned_at');
-    const statusIndex = headers.indexOf('status');
+    const statusIndex = headers.indexOf('Status');
+    const statusLowerIndex = headers.indexOf('status');
+    const updatedAtIndex = headers.indexOf('updated_at');
+
     const timestamp = getCurrentTimestamp();
 
+    Logger.log('📊 Índices das colunas:');
+    Logger.log('  CPF: ' + cpfIndex);
+    Logger.log('  registration_number: ' + regNumIndex);
+    Logger.log('  assigned_to: ' + assignedToIndex);
+    Logger.log('  Status: ' + statusIndex);
+
     let updated = 0;
+    const updatedCandidates = [];
 
     for (let i = 1; i < data.length; i++) {
-      const candidateId = data[i][regNumIndex] ? data[i][regNumIndex].toString() : '';
+      // Tenta identificar o candidato por CPF, registration_number ou id
+      const cpfValue = cpfIndex >= 0 ? data[i][cpfIndex]?.toString() : '';
+      const regNumValue = regNumIndex >= 0 ? data[i][regNumIndex]?.toString() : '';
+      const idValue = idIndex >= 0 ? data[i][idIndex]?.toString() : '';
 
-      if (ids.includes(candidateId)) {
+      // Verifica se algum desses valores está na lista de IDs
+      const isMatch = ids.some(id => {
+        return id === cpfValue || id === regNumValue || id === idValue;
+      });
+
+      if (isMatch) {
+        Logger.log('✅ Alocando candidato na linha ' + (i + 1));
+
+        // Atualiza assigned_to
         if (assignedToIndex >= 0) {
           candidateSheet.getRange(i + 1, assignedToIndex + 1).setValue(analystEmail);
         }
+
+        // Atualiza assigned_by
         if (assignedByIndex >= 0 && adminEmail) {
           candidateSheet.getRange(i + 1, assignedByIndex + 1).setValue(adminEmail);
         }
+
+        // Atualiza assigned_at
         if (assignedAtIndex >= 0) {
           candidateSheet.getRange(i + 1, assignedAtIndex + 1).setValue(timestamp);
         }
+
+        // Atualiza Status (ou status)
         if (statusIndex >= 0) {
           candidateSheet.getRange(i + 1, statusIndex + 1).setValue('em_analise');
+        } else if (statusLowerIndex >= 0) {
+          candidateSheet.getRange(i + 1, statusLowerIndex + 1).setValue('em_analise');
         }
+
+        // Atualiza updated_at
+        if (updatedAtIndex >= 0) {
+          candidateSheet.getRange(i + 1, updatedAtIndex + 1).setValue(timestamp);
+        }
+
         updated++;
+        updatedCandidates.push({
+          cpf: cpfValue,
+          regNum: regNumValue,
+          linha: i + 1
+        });
       }
     }
 
+    Logger.log('✅ Total de candidatos alocados: ' + updated);
+    Logger.log('📋 Candidatos atualizados:', JSON.stringify(updatedCandidates));
+
     return createResponse({
       success: true,
-      message: updated + ' candidato(s) atribuído(s)',
-      updated: updated
+      message: updated + ' candidato(s) atribuído(s) com sucesso',
+      updated: updated,
+      details: updatedCandidates
     });
   } catch (error) {
-    Logger.log('Erro em assignCandidates: ' + error.toString());
+    Logger.log('❌ Erro em assignCandidates: ' + error.toString());
     return createResponse({ error: error.toString() }, 500);
   }
 }

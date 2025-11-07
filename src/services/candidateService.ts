@@ -98,13 +98,29 @@ class GoogleSheetsService {
   async getCandidates(): Promise<Candidate[]> {
     const result = await this.fetchData('getCandidates');
     if (result.candidates) {
-      return result.candidates.map((candidate: any) => ({
-        ...candidate,
-        id: candidate.CPF || candidate.id,
-        registration_number: candidate.CPF || candidate.registration_number,
-        name: candidate.NOMECOMPLETO || candidate.name,
-        status: candidate.status || 'pendente',
-      }));
+      return result.candidates.map((candidate: any) => {
+        // Normaliza os dados da planilha
+        const normalized = {
+          ...candidate,
+          id: candidate.CPF || candidate.id,
+          registration_number: candidate.CPF || candidate.registration_number,
+          name: candidate.NOMECOMPLETO || candidate.name,
+
+          // Normaliza status (Status vs status)
+          status: candidate.Status || candidate.status || 'pendente',
+
+          // Campos de alocação da planilha
+          assigned_to: candidate.assigned_to || null,
+          assigned_at: candidate.assigned_at || null,
+          assigned_by: candidate.assigned_by || null,
+
+          // Timestamps da planilha
+          created_at: candidate.DataCadastro || candidate.created_at || null,
+          updated_at: candidate.updated_at || null,
+        };
+
+        return normalized;
+      });
     }
     return [];
   }
