@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzhoJbqiSk0DST3X1-sZ71ZDKcbVRPMRU8SVg4AlifCYsm6iPMFYjrX1_ylyCSL5GN5lQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRZ7vLEm4n8iha2GJSnIfCEjhHejRLme-OkIkp_qu6/dev';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
