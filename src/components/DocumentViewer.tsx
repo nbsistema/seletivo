@@ -75,15 +75,40 @@ export default function DocumentViewer({ candidate, onFocusDocument }: DocumentV
     { 
       key: 'laudo_medico', 
       label: 'Laudo Médico', 
-      url: candidate['LAUDO MEDICO'],
+      // Verifica múltiplas possibilidades de campo
+      url: candidate['LAUDO MEDICO'] || candidate.LAUDOMEDICO || candidate.laudo_medico,
       icon: <Stethoscope className="w-5 h-5" /> 
     }
   ];
 
-  // Filtra documentos disponíveis (com URL)
-  const availableDocs = documents.filter(doc => 
-    doc.url && doc.url.trim() !== '' && doc.url !== 'N/A' && doc.url !== 'Não possui'
-  );
+  // Filtra documentos disponíveis (com URL) - CORREÇÃO APLICADA
+  const availableDocs = documents.filter(doc => {
+    if (!doc.url) return false;
+    
+    const url = String(doc.url).trim();
+    const emptyValues = [
+      '', 
+      'N/A', 
+      'Não possui', 
+      'null', 
+      'undefined', 
+      'NaN', 
+      'Não', 
+      'Não tem',
+      ' ',
+      'n/a',
+      'nao possui',
+      'não'
+    ];
+    
+    // Verifica se a URL é válida e não está na lista de valores vazios
+    const isValidUrl = !emptyValues.includes(url) && 
+                      url.length > 0 && 
+                      url !== 'null' && 
+                      url !== 'undefined';
+    
+    return isValidUrl;
+  });
 
   useEffect(() => {
     if (availableDocs.length > 0 && !selectedDoc) {
