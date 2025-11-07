@@ -27,7 +27,11 @@ class GoogleSheetsService {
 
       const response = await fetch(url.toString(), {
         method: 'GET',
-        redirect: 'follow'
+        redirect: 'follow',
+        headers: {
+          'Authorization': `Bearer ${ANON_KEY}`,
+          'Content-Type': 'application/json',
+        }
       });
 
       if (!response.ok) {
@@ -43,9 +47,11 @@ class GoogleSheetsService {
   }
 }
 
-// URL do seu Google Apps Script
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzeUN52MaVkpQsORTIIiAkhHSVrlVR82UrISGLOoeyWsHCJlseTPS1Te9Mst24AcfpBhA/exec';
-const sheetsService = new GoogleSheetsService(SCRIPT_URL);
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/google-sheets-proxy`;
+const sheetsService = new GoogleSheetsService(EDGE_FUNCTION_URL);
 
 export async function getUsers(): Promise<User[]> {
   try {
