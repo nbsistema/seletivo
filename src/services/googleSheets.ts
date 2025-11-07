@@ -1,5 +1,5 @@
-// URL do seu script (substitua pelo ID real)
-const SCRIPT_URL = 'https://script.google.com/macros/s/1iQSQ06P_OXkqxaGWN3uG5jRYFBKyjWqQyvzuGk2EplY/exec';
+// URL do seu script (configurada via variável de ambiente)
+const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbz6BmO1rhI8LTRNzakiQ8ryL1cO2tAaNSFfWx9fh0ZFHqZ0b2FgW4WJxg19B8VC5WkH/exec';
 
 // Exemplo de uso
 async function testarSistema() {
