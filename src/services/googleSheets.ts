@@ -1,5 +1,5 @@
 // URL do seu script (substitua pelo ID real)
-const SCRIPT_URL = 'https://script.google.com/macros/s/SEU_ID/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/1iQSQ06P_OXkqxaGWN3uG5jRYFBKyjWqQyvzuGk2EplY/exec';
 
 // Exemplo de uso
 async function testarSistema() {
