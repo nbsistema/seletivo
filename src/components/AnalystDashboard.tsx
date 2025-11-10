@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { Loader2, CheckCircle, Clock, AlertCircle, XCircle, Eye } from 'lucide-react';
 import DocumentViewer from './DocumentViewer';
 import DisqualificationModal from './DisqualificationModal';
-import { supabase } from '../lib/supabase';
 
 interface AnalystDashboardProps {
   onCandidateTriaged?: () => void;

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 
 interface DisqualificationReason {
   id: string;
@@ -35,14 +34,14 @@ export default function DisqualificationModal({
   async function loadReasons() {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('disqualification_reasons')
-        .select('*')
-        .eq('is_active', true)
-        .order('reason');
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.getDisqualificationReasons();
 
-      if (error) throw error;
-      setReasons(data || []);
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao carregar motivos');
+      }
+
+      setReasons(result.data || []);
     } catch (error) {
       console.error('Erro ao carregar motivos:', error);
     } finally {

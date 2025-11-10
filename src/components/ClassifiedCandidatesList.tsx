@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { CheckCircle, Mail, MessageSquare, Loader2 } from 'lucide-react';
 import MessagingModal from './MessagingModal';
 

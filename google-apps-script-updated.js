@@ -7,6 +7,7 @@ const SHEET_USUARIOS = 'USUARIOS';
 const SHEET_CANDIDATOS = 'CANDIDATOS';
 const SHEET_MOTIVOS = 'MOTIVOS';
 const SHEET_MENSAGENS = 'MENSAGENS';
+const SHEET_TEMPLATES = 'TEMPLATES';
 
 // ============================================
 // FUNÇÕES PRINCIPAIS DE ENTRADA
@@ -44,6 +45,7 @@ function handleRequest(e) {
       'getCandidatesByStatus': () => getCandidatesByStatus(params),
       'logMessage': () => logMessage(params),
       'getDisqualificationReasons': () => getDisqualificationReasons(),
+      'getMessageTemplates': () => getMessageTemplates(params),
       'test': () => testConnection()
     };
 
@@ -278,6 +280,57 @@ function testConnection() {
     timestamp: getCurrentTimestamp(),
     spreadsheetId: SPREADSHEET_ID
   };
+}
+
+// ============================================
+// FUNÇÕES DE TEMPLATES DE MENSAGENS
+// ============================================
+
+function initTemplatesSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_TEMPLATES);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_TEMPLATES);
+    sheet.getRange('A1:E1').setValues([['ID', 'Nome', 'Tipo', 'Assunto', 'Conteúdo']]);
+
+    const templates = [
+      ['T001', 'Classificado - Email', 'email', 'Processo Seletivo - Você foi classificado!',
+       'Prezado(a) [NOME],\n\nParabéns! Você foi classificado(a) no processo seletivo para a vaga de [CARGO] na área [AREA].\n\nEm breve entraremos em contato com informações sobre as próximas etapas do processo.\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção'],
+      ['T002', 'Classificado - SMS', 'sms', '',
+       'Parabéns [NOME]! Você foi classificado no processo seletivo para [CARGO]. Aguarde contato para próximas etapas.'],
+      ['T003', 'Desclassificado - Email', 'email', 'Processo Seletivo - Resultado da Análise',
+       'Prezado(a) [NOME],\n\nAgradecemos seu interesse em fazer parte da nossa equipe.\n\nInfelizmente, nesta etapa do processo seletivo, seu perfil não foi selecionado para a vaga de [CARGO].\n\nDesejamos muito sucesso em sua jornada profissional.\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção'],
+      ['T004', 'Em Revisão - Email', 'email', 'Processo Seletivo - Análise em Andamento',
+       'Prezado(a) [NOME],\n\nSeu cadastro para a vaga de [CARGO] está sendo revisado pela nossa equipe de análise.\n\nEm breve daremos retorno sobre o andamento do seu processo seletivo.\n\nAtenciosamente,\nEquipe de Recrutamento e Seleção']
+    ];
+
+    sheet.getRange(2, 1, templates.length, 5).setValues(templates);
+  }
+
+  return sheet;
+}
+
+function getMessageTemplates(params) {
+  const sheet = initTemplatesSheet();
+  const data = sheet.getDataRange().getValues();
+  const templates = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const messageType = params && params.messageType ? params.messageType : null;
+
+    if (!messageType || data[i][2] === messageType) {
+      templates.push({
+        id: data[i][0],
+        template_name: data[i][1],
+        message_type: data[i][2],
+        subject: data[i][3],
+        content: data[i][4]
+      });
+    }
+  }
+
+  return templates;
 }
 
 // ============================================

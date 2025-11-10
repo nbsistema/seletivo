@@ -102,5 +102,36 @@ export const googleSheetsService = {
       console.error('Erro ao registrar mensagem:', error);
       return { success: false, error: 'Erro ao registrar mensagem' };
     }
+  },
+
+  async getDisqualificationReasons(): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'getDisqualificationReasons'
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar motivos de desclassificação:', error);
+      return { success: false, error: 'Erro ao buscar motivos de desclassificação' };
+    }
+  },
+
+  async getMessageTemplates(messageType?: 'email' | 'sms'): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'getMessageTemplates',
+        ...(messageType && { messageType })
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar templates de mensagens:', error);
+      return { success: false, error: 'Erro ao buscar templates de mensagens' };
+    }
   }
 };

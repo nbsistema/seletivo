@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { X, Mail, MessageSquare, Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
 interface MessageTemplate {
@@ -54,15 +53,14 @@ export default function MessagingModal({
   async function loadTemplates() {
     try {
       setLoadingTemplates(true);
-      const { data, error } = await supabase
-        .from('messages_templates')
-        .select('*')
-        .eq('message_type', messageType)
-        .eq('is_active', true)
-        .order('template_name');
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.getMessageTemplates(messageType);
 
-      if (error) throw error;
-      setTemplates(data || []);
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao carregar templates');
+      }
+
+      setTemplates(result.data || []);
     } catch (error) {
       console.error('Erro ao carregar templates:', error);
     } finally {
