@@ -39,10 +39,15 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
 
     try {
       setLoading(true);
+      console.log('🔄 Carregando candidatos para analista:', user.id);
+      
       const response = await candidateService.getCandidates(1, 100, {
         assignedTo: user.id,
       });
+      
+      console.log('📊 Candidatos carregados:', response.data);
       setCandidates(response.data);
+      
       if (response.data.length > 0 && !selectedCandidate) {
         setSelectedCandidate(response.data[0]);
       }
@@ -58,6 +63,7 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
 
     try {
       const data = await candidateService.getStatistics(user.id);
+      console.log('📈 Estatísticas carregadas:', data);
       setStats(data);
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
@@ -68,19 +74,24 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
     if (!selectedCandidate || !user) return;
 
     try {
+      console.log('✅ Classificando candidato:', selectedCandidate.registration_number);
+      
       const { googleSheetsService } = await import('../services/googleSheets');
       const result = await googleSheetsService.updateCandidateStatus(
         selectedCandidate.registration_number,
-        'Classificado',
+        'classificada', // CORREÇÃO: minúsculo
         {
           analystEmail: user.email
         }
       );
 
+      console.log('📝 Resposta da classificação:', result);
+
       if (!result.success) {
         throw new Error(result.error || 'Erro ao classificar');
       }
 
+      // Recarregar dados para atualizar a interface
       await loadCandidates();
       await loadStats();
 
@@ -92,7 +103,7 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
       moveToNext();
     } catch (error) {
       console.error('Erro ao classificar candidato:', error);
-      alert('Erro ao classificar candidato');
+      alert('Erro ao classificar candidato: ' + error.message);
     }
   }
 
@@ -100,16 +111,20 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
     if (!selectedCandidate || !user) return;
 
     try {
+      console.log('❌ Desclassificando candidato:', selectedCandidate.registration_number);
+      
       const { googleSheetsService } = await import('../services/googleSheets');
       const result = await googleSheetsService.updateCandidateStatus(
         selectedCandidate.registration_number,
-        'Desclassificado',
+        'desclassificada', // CORREÇÃO: minúsculo
         {
           reasonId,
           notes,
           analystEmail: user.email
         }
       );
+
+      console.log('📝 Resposta da desclassificação:', result);
 
       if (!result.success) {
         throw new Error(result.error || 'Erro ao desclassificar');
@@ -126,7 +141,7 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
       moveToNext();
     } catch (error) {
       console.error('Erro ao desclassificar candidato:', error);
-      alert('Erro ao desclassificar candidato');
+      alert('Erro ao desclassificar candidato: ' + error.message);
     }
   }
 
@@ -134,14 +149,18 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
     if (!selectedCandidate || !user) return;
 
     try {
+      console.log('🔍 Marcando para revisão:', selectedCandidate.registration_number);
+      
       const { googleSheetsService } = await import('../services/googleSheets');
       const result = await googleSheetsService.updateCandidateStatus(
         selectedCandidate.registration_number,
-        'Revisar',
+        'revisar', // Já está correto
         {
           analystEmail: user.email
         }
       );
+
+      console.log('📝 Resposta da revisão:', result);
 
       if (!result.success) {
         throw new Error(result.error || 'Erro ao marcar para revisão');
@@ -158,7 +177,7 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
       moveToNext();
     } catch (error) {
       console.error('Erro ao marcar candidato para revisão:', error);
-      alert('Erro ao marcar candidato para revisão');
+      alert('Erro ao marcar candidato para revisão: ' + error.message);
     }
   }
 
@@ -176,6 +195,34 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
     if (currentIndex > 0) {
       setSelectedCandidate(candidates[currentIndex - 1]);
     }
+  }
+
+  // Função para traduzir o status para exibição
+  function getStatusDisplay(status: string) {
+    const statusMap: { [key: string]: string } = {
+      'pendente': 'Pendente',
+      'em_analise': 'Em Análise',
+      'concluido': 'Concluído',
+      'classificada': 'Classificado',
+      'desclassificada': 'Desclassificado',
+      'revisar': 'Revisar'
+    };
+    
+    return statusMap[status] || status;
+  }
+
+  // Função para obter a cor do status
+  function getStatusColor(status: string) {
+    const colorMap: { [key: string]: string } = {
+      'pendente': 'bg-yellow-100 text-yellow-800',
+      'em_analise': 'bg-blue-100 text-blue-800',
+      'concluido': 'bg-green-100 text-green-800',
+      'classificada': 'bg-green-100 text-green-800',
+      'desclassificada': 'bg-red-100 text-red-800',
+      'revisar': 'bg-orange-100 text-orange-800'
+    };
+    
+    return colorMap[status] || 'bg-gray-100 text-gray-800';
   }
 
   if (loading) {
@@ -252,19 +299,9 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
                   </div>
                   <div className="flex items-center gap-2 mt-2">
                     <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        candidate.status === 'concluido'
-                          ? 'bg-green-100 text-green-800'
-                          : candidate.status === 'em_analise'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
+                      className={`text-xs px-2 py-1 rounded-full ${getStatusColor(candidate.status)}`}
                     >
-                      {candidate.status === 'concluido'
-                        ? 'Concluído'
-                        : candidate.status === 'em_analise'
-                        ? 'Em Análise'
-                        : 'Pendente'}
+                      {getStatusDisplay(candidate.status)}
                     </span>
                   </div>
                 </div>
