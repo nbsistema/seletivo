@@ -136,8 +136,22 @@ function getUserRole(params) {
 function getCandidates(params) {
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_CANDIDATOS);
+
+  if (!sheet) {
+    Logger.log('⚠️ Aba CANDIDATOS não encontrada!');
+    return { candidates: [] };
+  }
+
   const data = sheet.getDataRange().getValues();
+
+  if (data.length <= 1) {
+    Logger.log('⚠️ Aba CANDIDATOS vazia (apenas cabeçalho ou sem dados)');
+    return { candidates: [] };
+  }
+
   const headers = data[0];
+  Logger.log('📋 Cabeçalhos encontrados: ' + headers.join(', '));
+  Logger.log('📊 Total de linhas (incluindo cabeçalho): ' + data.length);
 
   const candidates = [];
   for (let i = 1; i < data.length; i++) {
@@ -148,7 +162,10 @@ function getCandidates(params) {
     candidates.push(candidate);
   }
 
-  return candidates;
+  Logger.log('✅ Total de candidatos processados: ' + candidates.length);
+
+  // Retornar no formato esperado pelo frontend
+  return { candidates: candidates };
 }
 
 function updateCandidateStatus(params) {

@@ -96,33 +96,44 @@ class GoogleSheetsService {
   }
 
   async getCandidates(): Promise<Candidate[]> {
+    console.log('📞 Chamando getCandidates do Google Sheets...');
     const result = await this.fetchData('getCandidates');
-    if (result.candidates) {
-      return result.candidates.map((candidate: any) => {
-        // Normaliza os dados da planilha
-        const normalized = {
-          ...candidate,
-          id: candidate.CPF || candidate.id,
-          registration_number: candidate.CPF || candidate.registration_number,
-          name: candidate.NOMECOMPLETO || candidate.name,
+    console.log('📥 Resultado completo recebido:', result);
+    console.log('📊 result.data:', result.data);
+    console.log('📊 result.data?.candidates:', result.data?.candidates);
 
-          // Normaliza status (Status vs status)
-          status: candidate.Status || candidate.status || 'pendente',
+    // O Google Apps Script retorna { success: true, data: { candidates: [...] } }
+    const candidatesArray = result.data?.candidates || result.candidates || [];
+    console.log('✅ Array de candidatos extraído:', candidatesArray);
+    console.log('📏 Total de candidatos:', candidatesArray.length);
 
-          // Campos de alocação da planilha
-          assigned_to: candidate.assigned_to || null,
-          assigned_at: candidate.assigned_at || null,
-          assigned_by: candidate.assigned_by || null,
-
-          // Timestamps da planilha
-          created_at: candidate.DataCadastro || candidate.created_at || null,
-          updated_at: candidate.updated_at || null,
-        };
-
-        return normalized;
-      });
+    if (candidatesArray.length > 0) {
+      console.log('👤 Exemplo do primeiro candidato:', candidatesArray[0]);
     }
-    return [];
+
+    return candidatesArray.map((candidate: any) => {
+      // Normaliza os dados da planilha
+      const normalized = {
+        ...candidate,
+        id: candidate.CPF || candidate.id,
+        registration_number: candidate.CPF || candidate.registration_number,
+        name: candidate.NOMECOMPLETO || candidate.name,
+
+        // Normaliza status (Status vs status)
+        status: candidate.Status || candidate.status || 'pendente',
+
+        // Campos de alocação da planilha
+        assigned_to: candidate.assigned_to || null,
+        assigned_at: candidate.assigned_at || null,
+        assigned_by: candidate.assigned_by || null,
+
+        // Timestamps da planilha
+        created_at: candidate.DataCadastro || candidate.created_at || null,
+        updated_at: candidate.updated_at || null,
+      };
+
+      return normalized;
+    });
   }
 
   async updateCandidate(cpf: string, updates: any): Promise<void> {
