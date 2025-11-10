@@ -4,11 +4,14 @@ import { candidateService } from '../services/candidateService';
 import AssignmentPanel from './AssignmentPanel';
 import AnalystDashboard from './AnalystDashboard';
 import CsvImportTool from './CsvImportTool';
-import { BarChart3, Users, Upload, CheckCircle } from 'lucide-react';
+import ClassifiedCandidatesList from './ClassifiedCandidatesList';
+import DisqualifiedCandidatesList from './DisqualifiedCandidatesList';
+import ReviewCandidatesList from './ReviewCandidatesList';
+import { BarChart3, Users, Upload, CheckCircle, XCircle, Eye } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'allocation' | 'my-candidates' | 'import'>('allocation');
+  const [activeTab, setActiveTab] = useState<'allocation' | 'my-candidates' | 'import' | 'classified' | 'disqualified' | 'review'>('allocation');
   const [stats, setStats] = useState({
     total: 0,
     pendente: 0,
@@ -173,6 +176,39 @@ export default function AdminDashboard() {
               <BarChart3 className="w-4 h-4" />
               Meus Candidatos
             </button>
+            <button
+              onClick={() => setActiveTab('classified')}
+              className={`px-4 py-3 font-medium flex items-center gap-2 border-b-2 transition-colors ${
+                activeTab === 'classified'
+                  ? 'border-green-600 text-green-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <CheckCircle className="w-4 h-4" />
+              Classificados
+            </button>
+            <button
+              onClick={() => setActiveTab('disqualified')}
+              className={`px-4 py-3 font-medium flex items-center gap-2 border-b-2 transition-colors ${
+                activeTab === 'disqualified'
+                  ? 'border-red-600 text-red-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <XCircle className="w-4 h-4" />
+              Desclassificados
+            </button>
+            <button
+              onClick={() => setActiveTab('review')}
+              className={`px-4 py-3 font-medium flex items-center gap-2 border-b-2 transition-colors ${
+                activeTab === 'review'
+                  ? 'border-yellow-600 text-yellow-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Eye className="w-4 h-4" />
+              À Revisar
+            </button>
           </div>
         </div>
       </div>
@@ -184,14 +220,15 @@ export default function AdminDashboard() {
             adminId={user?.id || ''}
             onAssignmentComplete={() => {
               loadStats();
-              // Atualiza o total de triados quando houver conclusões
-              // Você pode chamar updateTotalTriados() quando um candidato for classificado/desclassificado
             }}
           />
         )}
         {activeTab === 'my-candidates' && (
           <AnalystDashboard onCandidateTriaged={updateTotalTriados} />
         )}
+        {activeTab === 'classified' && <ClassifiedCandidatesList />}
+        {activeTab === 'disqualified' && <DisqualifiedCandidatesList />}
+        {activeTab === 'review' && <ReviewCandidatesList />}
       </div>
     </div>
   );

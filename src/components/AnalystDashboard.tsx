@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { candidateService, Candidate } from '../services/candidateService';
 import { useAuth } from '../contexts/AuthContext';
-import { Loader2, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, AlertCircle, XCircle, Eye } from 'lucide-react';
 import DocumentViewer from './DocumentViewer';
+import DisqualificationModal from './DisqualificationModal';
+import { supabase } from '../lib/supabase';
 
 interface AnalystDashboardProps {
   onCandidateTriaged?: () => void;
@@ -13,11 +15,15 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showDisqualificationModal, setShowDisqualificationModal] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     pendente: 0,
     em_analise: 0,
     concluido: 0,
+    classificado: 0,
+    desclassificado: 0,
+    revisar: 0,
   });
 
   useEffect(() => {
@@ -57,20 +63,98 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
     }
   }
 
-  async function handleStatusChange(status: 'pendente' | 'em_analise' | 'concluido') {
-    if (!selectedCandidate) return;
+  async function handleClassify() {
+    if (!selectedCandidate || !user) return;
 
     try {
-      await candidateService.updateCandidateStatus(selectedCandidate.id, status);
+      const { error } = await supabase
+        .from('candidates')
+        .update({
+          status_triagem: 'Classificado',
+          screened_by: user.id,
+          screened_at: new Date().toISOString(),
+          status: 'concluido'
+        })
+        .eq('id', selectedCandidate.id);
+
+      if (error) throw error;
+
       await loadCandidates();
       await loadStats();
 
-      if (status === 'concluido' && onCandidateTriaged) {
+      if (onCandidateTriaged) {
         onCandidateTriaged();
       }
+
+      alert('Candidato classificado com sucesso!');
+      moveToNext();
     } catch (error) {
-      console.error('Erro ao atualizar status:', error);
-      alert('Erro ao atualizar status do candidato');
+      console.error('Erro ao classificar candidato:', error);
+      alert('Erro ao classificar candidato');
+    }
+  }
+
+  async function handleDisqualify(reasonId: string, notes: string) {
+    if (!selectedCandidate || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('candidates')
+        .update({
+          status_triagem: 'Desclassificado',
+          disqualification_reason_id: reasonId,
+          screening_notes: notes,
+          screened_by: user.id,
+          screened_at: new Date().toISOString(),
+          status: 'concluido'
+        })
+        .eq('id', selectedCandidate.id);
+
+      if (error) throw error;
+
+      await loadCandidates();
+      await loadStats();
+
+      if (onCandidateTriaged) {
+        onCandidateTriaged();
+      }
+
+      alert('Candidato desclassificado com sucesso!');
+      moveToNext();
+    } catch (error) {
+      console.error('Erro ao desclassificar candidato:', error);
+      alert('Erro ao desclassificar candidato');
+    }
+  }
+
+  async function handleReview() {
+    if (!selectedCandidate || !user) return;
+
+    try {
+      const { error } = await supabase
+        .from('candidates')
+        .update({
+          status_triagem: 'Revisar',
+          screened_by: user.id,
+          screened_at: new Date().toISOString(),
+          status: 'em_analise'
+        })
+        .eq('id', selectedCandidate.id);
+
+      if (error) throw error;
+
+      await loadCandidates();
+      await loadStats();
+
+      if (onCandidateTriaged) {
+        onCandidateTriaged();
+      }
+
+      alert('Candidato marcado para revisão!');
+      moveToNext();
+    } catch (error) {
+      console.error('Erro ao marcar candidato para revisão:', error);
+      alert('Erro ao marcar candidato para revisão');
     }
   }
 
@@ -213,20 +297,39 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
 
                   <div className="flex gap-2">
                     <button
-                      onClick={() => handleStatusChange('em_analise')}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      onClick={handleClassify}
+                      disabled={!selectedCandidate}
+                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
                     >
-                      Iniciar Análise
+                      <CheckCircle className="w-4 h-4" />
+                      Classificar
                     </button>
                     <button
-                      onClick={() => handleStatusChange('concluido')}
-                      className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      onClick={() => setShowDisqualificationModal(true)}
+                      disabled={!selectedCandidate}
+                      className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
                     >
-                      Concluir
+                      <XCircle className="w-4 h-4" />
+                      Desclassificar
+                    </button>
+                    <button
+                      onClick={handleReview}
+                      disabled={!selectedCandidate}
+                      className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Revisar
                     </button>
                   </div>
                 </div>
               </div>
+
+              <DisqualificationModal
+                isOpen={showDisqualificationModal}
+                onClose={() => setShowDisqualificationModal(false)}
+                onConfirm={handleDisqualify}
+                candidateName={selectedCandidate?.NOMECOMPLETO || selectedCandidate?.full_name || ''}
+              />
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
