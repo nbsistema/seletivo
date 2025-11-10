@@ -3,22 +3,33 @@ import { XCircle, Loader2 } from 'lucide-react';
 
 interface Candidate {
   id: string;
+  registration_number?: string;
+  NOMECOMPLETO?: string;
   full_name?: string;
   nome_completo?: string;
   nome_social?: string;
+  CPF?: string;
   cpf?: string;
   cpf_numero?: string;
   email?: string;
   telefone?: string;
+  AREAATUACAO?: string;
   desired_area?: string;
   area_atuacao_pretendida?: string;
+  CARGOPRETENDIDO?: string;
   cargo_administrativo?: string | boolean;
   cargo_assistencial?: string | boolean;
+  status?: string;
+  status_triagem?: string;
   screening_notes?: string;
+  observacoes_triagem?: string;
   screened_at?: string;
+  data_hora_triagem?: string;
   disqualification_reason?: {
     reason: string;
   };
+  motivo_desclassificacao?: string;
+  analista_triagem?: string;
 }
 
 export default function DisqualifiedCandidatesList() {
@@ -33,39 +44,74 @@ export default function DisqualifiedCandidatesList() {
   async function loadDisqualifiedCandidates() {
     try {
       setLoading(true);
+      console.log('🔍 Buscando candidatos desclassificados...');
+      
       const { googleSheetsService } = await import('../services/googleSheets');
-      const result = await googleSheetsService.getCandidatesByStatus('Desclassificado');
+      
+      // CORREÇÃO: Usar 'desclassificada' (minúsculo) em vez de 'Desclassificado'
+      const result = await googleSheetsService.getCandidatesByStatus('desclassificada');
+
+      console.log('📊 Resultado da busca:', result);
 
       if (!result.success) {
         throw new Error(result.error || 'Erro ao carregar candidatos');
       }
 
       setCandidates(result.data || []);
+      console.log('✅ Candidatos desclassificados carregados:', result.data?.length || 0);
+      
     } catch (error) {
-      console.error('Erro ao carregar candidatos desclassificados:', error);
+      console.error('❌ Erro ao carregar candidatos desclassificados:', error);
     } finally {
       setLoading(false);
     }
   }
 
   function getCargo(candidate: Candidate) {
-    if (candidate.cargo_administrativo && candidate.cargo_administrativo !== 'false') {
-      return typeof candidate.cargo_administrativo === 'string'
-        ? candidate.cargo_administrativo
-        : 'Administrativo';
-    }
-    if (candidate.cargo_assistencial && candidate.cargo_assistencial !== 'false') {
-      return typeof candidate.cargo_assistencial === 'string'
-        ? candidate.cargo_assistencial
-        : 'Assistencial';
-    }
-    return 'Não informado';
+    return candidate.CARGOPRETENDIDO || 
+           candidate.cargo_administrativo || 
+           candidate.cargo_assistencial || 
+           'Não informado';
+  }
+
+  function getMotivoDesclassificacao(candidate: Candidate) {
+    // Tenta diferentes campos onde o motivo pode estar armazenado
+    return candidate.disqualification_reason?.reason || 
+           candidate.motivo_desclassificacao || 
+           'Motivo não informado';
+  }
+
+  function getDataTriagem(candidate: Candidate) {
+    return candidate.data_hora_triagem || 
+           candidate.screened_at || 
+           null;
+  }
+
+  function getObservacoes(candidate: Candidate) {
+    return candidate.observacoes_triagem || 
+           candidate.screening_notes || 
+           null;
+  }
+
+  function getNomeCompleto(candidate: Candidate) {
+    return candidate.NOMECOMPLETO || 
+           candidate.nome_completo || 
+           candidate.full_name || 
+           'Nome não informado';
+  }
+
+  function getAreaAtuacao(candidate: Candidate) {
+    return candidate.AREAATUACAO || 
+           candidate.area_atuacao_pretendida || 
+           candidate.desired_area || 
+           'Área não informada';
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <span className="ml-2 text-gray-600">Carregando candidatos desclassificados...</span>
       </div>
     );
   }
@@ -74,7 +120,10 @@ export default function DisqualifiedCandidatesList() {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <XCircle className="w-16 h-16 text-gray-300 mb-4" />
-        <p className="text-gray-500">Nenhum candidato desclassificado ainda</p>
+        <p className="text-gray-500 text-lg mb-2">Nenhum candidato desclassificado</p>
+        <p className="text-gray-400 text-sm">
+          Os candidatos aparecerão aqui quando forem desclassificados pelos analistas
+        </p>
       </div>
     );
   }
@@ -96,6 +145,9 @@ export default function DisqualifiedCandidatesList() {
                 Nome Completo
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                CPF
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                 Área
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
@@ -108,39 +160,50 @@ export default function DisqualifiedCandidatesList() {
                 Data
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                Analista
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                 Ações
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {candidates.map((candidate) => (
-              <tr key={candidate.id} className="hover:bg-gray-50 transition-colors">
+              <tr key={candidate.registration_number || candidate.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 text-sm text-gray-800 font-medium">
-                  {candidate.nome_completo || candidate.full_name || 'Não informado'}
-                  {(candidate.nome_social) && (
+                  {getNomeCompleto(candidate)}
+                  {candidate.nome_social && (
                     <div className="text-xs text-gray-500">
                       ({candidate.nome_social})
                     </div>
                   )}
                 </td>
+                <td className="px-4 py-3 text-sm text-gray-600 font-mono">
+                  {candidate.CPF || candidate.cpf || candidate.cpf_numero || '-'}
+                </td>
                 <td className="px-4 py-3 text-sm text-gray-600">
-                  {candidate.area_atuacao_pretendida || candidate.desired_area || 'Não informado'}
+                  {getAreaAtuacao(candidate)}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">
                   {getCargo(candidate)}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {candidate.disqualification_reason?.reason || 'Não informado'}
+                <td className="px-4 py-3 text-sm text-gray-600 max-w-xs">
+                  <div className="truncate" title={getMotivoDesclassificacao(candidate)}>
+                    {getMotivoDesclassificacao(candidate)}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">
-                  {candidate.screened_at
-                    ? new Date(candidate.screened_at).toLocaleDateString('pt-BR')
+                  {getDataTriagem(candidate)
+                    ? new Date(getDataTriagem(candidate)!).toLocaleDateString('pt-BR')
                     : '-'}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">
+                  {candidate.analista_triagem || '-'}
                 </td>
                 <td className="px-4 py-3">
                   <button
                     onClick={() => setSelectedCandidate(candidate)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium px-3 py-1 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
                   >
                     Ver detalhes
                   </button>
@@ -151,73 +214,113 @@ export default function DisqualifiedCandidatesList() {
         </table>
       </div>
 
+      {/* Modal de Detalhes */}
       {selectedCandidate && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
               <h3 className="text-xl font-bold text-gray-800">Detalhes da Desclassificação</h3>
               <button
                 onClick={() => setSelectedCandidate(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <XCircle className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <p className="text-sm text-gray-600">Nome Completo</p>
-                <p className="text-lg font-semibold text-gray-800">
-                  {selectedCandidate.nome_completo || selectedCandidate.full_name}
+            <div className="p-6 space-y-6">
+              {/* Informações Pessoais */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Nome Completo</p>
+                  <p className="text-lg text-gray-800 mt-1">
+                    {getNomeCompleto(selectedCandidate)}
+                  </p>
+                </div>
+
+                {selectedCandidate.nome_social && (
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Nome Social</p>
+                    <p className="text-lg text-gray-800 mt-1">
+                      {selectedCandidate.nome_social}
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">CPF</p>
+                  <p className="text-lg font-mono text-gray-800 mt-1">
+                    {selectedCandidate.CPF || selectedCandidate.cpf || selectedCandidate.cpf_numero || 'Não informado'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Número de Inscrição</p>
+                  <p className="text-lg font-mono text-gray-800 mt-1">
+                    {selectedCandidate.registration_number || 'Não informado'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Informações da Vaga */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Área de Atuação</p>
+                  <p className="text-lg text-gray-800 mt-1">
+                    {getAreaAtuacao(selectedCandidate)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Cargo Pretendido</p>
+                  <p className="text-lg text-gray-800 mt-1">
+                    {getCargo(selectedCandidate)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Motivo da Desclassificação */}
+              <div className="border-t pt-6">
+                <p className="text-sm text-gray-600 font-medium">Motivo da Desclassificação</p>
+                <p className="text-lg text-red-600 font-semibold mt-2 p-3 bg-red-50 rounded-lg">
+                  {getMotivoDesclassificacao(selectedCandidate)}
                 </p>
               </div>
 
-              {selectedCandidate.nome_social && (
+              {/* Observações */}
+              {getObservacoes(selectedCandidate) && (
                 <div>
-                  <p className="text-sm text-gray-600">Nome Social</p>
-                  <p className="text-lg font-semibold text-gray-800">
-                    {selectedCandidate.nome_social}
+                  <p className="text-sm text-gray-600 font-medium">Observações do Analista</p>
+                  <p className="text-gray-800 mt-2 p-3 bg-gray-50 rounded-lg whitespace-pre-wrap">
+                    {getObservacoes(selectedCandidate)}
                   </p>
                 </div>
               )}
 
-              <div>
-                <p className="text-sm text-gray-600">CPF</p>
-                <p className="text-lg font-mono text-gray-800">
-                  {selectedCandidate.cpf_numero || selectedCandidate.cpf}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-gray-600">Motivo da Desclassificação</p>
-                <p className="text-lg text-red-600 font-semibold">
-                  {selectedCandidate.disqualification_reason?.reason || 'Não informado'}
-                </p>
-              </div>
-
-              {selectedCandidate.screening_notes && (
+              {/* Metadados */}
+              <div className="grid grid-cols-2 gap-6 border-t pt-6">
                 <div>
-                  <p className="text-sm text-gray-600">Observações</p>
-                  <p className="text-gray-800 whitespace-pre-wrap">
-                    {selectedCandidate.screening_notes}
+                  <p className="text-sm text-gray-600 font-medium">Data da Desclassificação</p>
+                  <p className="text-gray-800 mt-1">
+                    {getDataTriagem(selectedCandidate)
+                      ? new Date(getDataTriagem(selectedCandidate)!).toLocaleString('pt-BR')
+                      : 'Não informado'}
                   </p>
                 </div>
-              )}
 
-              <div>
-                <p className="text-sm text-gray-600">Data da Desclassificação</p>
-                <p className="text-gray-800">
-                  {selectedCandidate.screened_at
-                    ? new Date(selectedCandidate.screened_at).toLocaleString('pt-BR')
-                    : 'Não informado'}
-                </p>
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Analista Responsável</p>
+                  <p className="text-gray-800 mt-1">
+                    {selectedCandidate.analista_triagem || 'Não informado'}
+                  </p>
+                </div>
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 p-6 border-t bg-gray-50">
               <button
                 onClick={() => setSelectedCandidate(null)}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
               >
                 Fechar
               </button>
