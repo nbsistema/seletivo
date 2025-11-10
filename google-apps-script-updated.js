@@ -223,15 +223,35 @@ function updateCandidateStatus(params) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
+  Logger.log('📝 updateCandidateStatus - Params:', JSON.stringify(params));
+  Logger.log('📋 Cabeçalhos:', headers.join(', '));
+
   const statusCol = headers.indexOf('Status');
-  const regNumCol = headers.indexOf('Número de Inscrição') || headers.indexOf('NUMEROINSCRICAO');
-  const analystCol = headers.indexOf('Analista') || headers.indexOf('assigned_to');
-  const dateCol = headers.indexOf('Data Triagem') || headers.indexOf('data_hora_triagem');
+  const cpfCol = headers.indexOf('CPF');
+  const regNumCol = headers.indexOf('Número de Inscrição') >= 0 ? headers.indexOf('Número de Inscrição') : headers.indexOf('NUMEROINSCRICAO');
+  const analystCol = headers.indexOf('Analista') >= 0 ? headers.indexOf('Analista') : headers.indexOf('assigned_to');
+  const dateCol = headers.indexOf('Data Triagem') >= 0 ? headers.indexOf('Data Triagem') : headers.indexOf('data_hora_triagem');
   const reasonCol = headers.indexOf('Motivo Desclassificação');
-  const notesCol = headers.indexOf('Observações') || headers.indexOf('screening_notes');
+  const notesCol = headers.indexOf('Observações') >= 0 ? headers.indexOf('Observações') : headers.indexOf('screening_notes');
+
+  Logger.log('🔍 Índices de colunas:');
+  Logger.log('  CPF col:', cpfCol);
+  Logger.log('  RegNum col:', regNumCol);
+  Logger.log('  Status col:', statusCol);
+
+  // Buscar pelo CPF ou registration_number
+  const searchValue = params.registrationNumber;
+  Logger.log('🔎 Buscando por:', searchValue);
 
   for (let i = 1; i < data.length; i++) {
-    if (data[i][regNumCol] === params.registrationNumber) {
+    const cpfValue = data[i][cpfCol] ? String(data[i][cpfCol]).trim() : '';
+    const regNumValue = regNumCol >= 0 ? String(data[i][regNumCol]).trim() : '';
+    const searchValueStr = String(searchValue).trim();
+
+    // Comparar com CPF ou registration_number
+    if (cpfValue === searchValueStr || regNumValue === searchValueStr) {
+      Logger.log('✅ Candidato encontrado na linha:', i + 1);
+
       if (statusCol >= 0) sheet.getRange(i + 1, statusCol + 1).setValue(params.statusTriagem);
       if (analystCol >= 0 && params.analystEmail) sheet.getRange(i + 1, analystCol + 1).setValue(params.analystEmail);
       if (dateCol >= 0) sheet.getRange(i + 1, dateCol + 1).setValue(getCurrentTimestamp());
@@ -240,10 +260,14 @@ function updateCandidateStatus(params) {
         sheet.getRange(i + 1, reasonCol + 1).setValue(reason);
       }
       if (notesCol >= 0 && params.notes) sheet.getRange(i + 1, notesCol + 1).setValue(params.notes);
-      return true;
+
+      Logger.log('✅ Status atualizado com sucesso!');
+      return { success: true, message: 'Status atualizado' };
     }
   }
 
+  Logger.log('❌ Candidato não encontrado com registrationNumber:', searchValue);
+  Logger.log('❌ Primeiros 3 CPFs da planilha:', data.slice(1, 4).map(row => row[cpfCol]));
   throw new Error('Candidato não encontrado');
 }
 
