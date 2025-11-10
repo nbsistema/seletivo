@@ -15,7 +15,18 @@ export const googleSheetsService = {
         ...filters
       });
 
-      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
       const data = await response.json();
       return data;
     } catch (error) {
@@ -34,18 +45,26 @@ export const googleSheetsService = {
     }
   ): Promise<GoogleSheetsResponse> {
     try {
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'updateCandidateStatus',
-          registrationNumber,
-          statusTriagem,
-          ...options
-        })
+      const params = new URLSearchParams({
+        action: 'updateCandidateStatus',
+        registrationNumber,
+        statusTriagem,
+        ...(options?.reasonId && { reasonId: options.reasonId }),
+        ...(options?.notes && { notes: options.notes }),
+        ...(options?.analystEmail && { analystEmail: options.analystEmail })
       });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
 
       const data = await response.json();
       return data;
@@ -62,7 +81,18 @@ export const googleSheetsService = {
         status
       });
 
-      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
       const data = await response.json();
       return data;
     } catch (error) {
@@ -80,21 +110,27 @@ export const googleSheetsService = {
     sentBy: string
   ): Promise<GoogleSheetsResponse> {
     try {
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'logMessage',
-          registrationNumber,
-          messageType,
-          recipient,
-          subject,
-          content,
-          sentBy
-        })
+      const params = new URLSearchParams({
+        action: 'logMessage',
+        registrationNumber,
+        messageType,
+        recipient,
+        ...(subject && { subject }),
+        content,
+        sentBy
       });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
 
       const data = await response.json();
       return data;
@@ -110,7 +146,18 @@ export const googleSheetsService = {
         action: 'getDisqualificationReasons'
       });
 
-      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
       const data = await response.json();
       return data;
     } catch (error) {
@@ -126,7 +173,18 @@ export const googleSheetsService = {
         ...(messageType && { messageType })
       });
 
-      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
       const data = await response.json();
       return data;
     } catch (error) {
