@@ -40,7 +40,9 @@ function handleRequest(e) {
 
     const actions = {
       'getUserRole': () => getUserRole(params),
+      'getAnalysts': () => getAnalysts(params),
       'getCandidates': () => getCandidates(params),
+      'assignCandidates': () => assignCandidates(params),
       'updateCandidateStatus': () => updateCandidateStatus(params),
       'getCandidatesByStatus': () => getCandidatesByStatus(params),
       'logMessage': () => logMessage(params),
@@ -111,6 +113,9 @@ function getUserRole(params) {
   const sheet = initUsuariosSheet(); // Garante que a aba existe
   const data = sheet.getDataRange().getValues();
 
+  Logger.log('🔍 getUserRole - Buscando email: ' + params.email);
+  Logger.log('📊 getUserRole - Total de linhas: ' + data.length);
+
   // Normalizar email para comparação (minúsculas e sem espaços)
   const emailToFind = params.email ? params.email.toLowerCase().trim() : '';
 
@@ -118,15 +123,59 @@ function getUserRole(params) {
     const emailInSheet = data[i][0] ? data[i][0].toLowerCase().trim() : '';
 
     if (emailInSheet === emailToFind) {
+      const rawRole = data[i][2];
+      // CRÍTICO: Normalizar o role (minúsculas e sem espaços)
+      const normalizedRole = rawRole ? String(rawRole).toLowerCase().trim() : '';
+
+      Logger.log('✅ getUserRole - Usuário encontrado!');
+      Logger.log('  Email: ' + data[i][0]);
+      Logger.log('  Nome: ' + data[i][1]);
+      Logger.log('  Role RAW: ' + rawRole);
+      Logger.log('  Role NORMALIZADO: ' + normalizedRole);
+
       return {
         email: data[i][0],
         name: data[i][1] || data[i][0],
-        role: data[i][2],
+        role: normalizedRole,
         id: data[i][3] || data[i][0]
       };
     }
   }
+
+  Logger.log('❌ getUserRole - Usuário não encontrado');
   return null;
+}
+
+function getAnalysts(params) {
+  const ss = getSpreadsheet();
+  const sheet = initUsuariosSheet();
+  const data = sheet.getDataRange().getValues();
+
+  Logger.log('📋 getAnalysts - Buscando analistas...');
+  Logger.log('📊 getAnalysts - Total de linhas: ' + data.length);
+
+  const analysts = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const rawRole = data[i][2];
+    const normalizedRole = rawRole ? String(rawRole).toLowerCase().trim() : '';
+
+    Logger.log('  Linha ' + i + ' - Email: ' + data[i][0] + ', Role: ' + normalizedRole);
+
+    if (normalizedRole === 'analista') {
+      analysts.push({
+        id: data[i][3] || data[i][0],
+        email: data[i][0],
+        name: data[i][1] || data[i][0],
+        role: normalizedRole,
+        active: true
+      });
+    }
+  }
+
+  Logger.log('✅ getAnalysts - Total encontrados: ' + analysts.length);
+
+  return { analysts: analysts };
 }
 
 // ============================================
@@ -218,6 +267,63 @@ function getCandidatesByStatus(params) {
   }
 
   return candidates;
+}
+
+function assignCandidates(params) {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_CANDIDATOS);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  Logger.log('📋 assignCandidates - Iniciando alocação...');
+  Logger.log('  Candidatos: ' + params.candidateIds);
+  Logger.log('  Analista: ' + params.analystEmail);
+  Logger.log('  Admin: ' + params.adminEmail);
+
+  const cpfCol = headers.indexOf('CPF');
+  const assignedToCol = headers.indexOf('assigned_to');
+  const assignedByCol = headers.indexOf('assigned_by');
+  const assignedAtCol = headers.indexOf('assigned_at');
+  const statusCol = headers.indexOf('Status');
+
+  if (cpfCol < 0) {
+    throw new Error('Coluna CPF não encontrada');
+  }
+
+  const candidateIds = params.candidateIds.split(',');
+  let assignedCount = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const cpf = data[i][cpfCol];
+
+    if (candidateIds.includes(String(cpf))) {
+      Logger.log('  ✅ Alocando candidato CPF: ' + cpf);
+
+      // Atualizar colunas de alocação
+      if (assignedToCol >= 0) {
+        sheet.getRange(i + 1, assignedToCol + 1).setValue(params.analystEmail);
+      }
+      if (assignedByCol >= 0) {
+        sheet.getRange(i + 1, assignedByCol + 1).setValue(params.adminEmail);
+      }
+      if (assignedAtCol >= 0) {
+        sheet.getRange(i + 1, assignedAtCol + 1).setValue(getCurrentTimestamp());
+      }
+      if (statusCol >= 0) {
+        sheet.getRange(i + 1, statusCol + 1).setValue('em_analise');
+      }
+
+      assignedCount++;
+    }
+  }
+
+  Logger.log('✅ assignCandidates - Total alocados: ' + assignedCount);
+
+  return {
+    success: true,
+    assignedCount: assignedCount,
+    message: assignedCount + ' candidatos alocados com sucesso'
+  };
 }
 
 // ============================================

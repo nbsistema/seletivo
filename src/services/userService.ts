@@ -86,8 +86,16 @@ export async function getUsers(): Promise<User[]> {
 
 export async function getAnalysts(): Promise<User[]> {
   try {
-    const users = await getUsers();
-    return users.filter((user: User) => user.role === 'analista' && user.active);
+    console.log('🔍 Buscando analistas...');
+    const result = await sheetsService.fetchData('getAnalysts');
+    console.log('📥 Resultado de getAnalysts:', result);
+
+    // O Google Apps Script retorna { success: true, data: { analysts: [...] } }
+    const analysts = result.data?.analysts || result.analysts || [];
+    console.log('✅ Analistas extraídos:', analysts);
+    console.log('📊 Total de analistas:', analysts.length);
+
+    return analysts;
   } catch (error) {
     console.error('Erro ao buscar analistas:', error);
     throw error;
