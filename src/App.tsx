@@ -22,10 +22,25 @@ function AppContent() {
     return <LoginPage />;
   }
 
+  console.log('='.repeat(60));
+  console.log('🎯 APP.TSX - ROTEAMENTO');
+  console.log('='.repeat(60));
+  console.log('👤 Usuário:', JSON.stringify(user, null, 2));
+  console.log('🎭 Role:', user.role);
+  console.log('🔍 Tipo do role:', typeof user.role);
+  console.log('📏 Tamanho do role:', user.role?.length);
+  console.log('🔍 Role === "admin":', user.role === 'admin');
+  console.log('🔍 Role === "analista":', user.role === 'analista');
+  console.log('='.repeat(60));
+
   if (user.role === 'admin') {
+    console.log('✅ Redirecionando para AdminDashboard');
+    console.log('='.repeat(60));
     return <AdminDashboard />;
   }
 
+  console.log('✅ Redirecionando para AnalystDashboard');
+  console.log('='.repeat(60));
   return <AnalystDashboard />;
 }
 

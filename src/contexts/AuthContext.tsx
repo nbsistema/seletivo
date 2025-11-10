@@ -76,30 +76,56 @@ class GoogleSheetsService {
 
   async getUserByEmail(email: string): Promise<User | null> {
     const result = await this.fetchData('getUserRole', { email });
+    console.log('📥 getUserByEmail - Resultado COMPLETO:', JSON.stringify(result, null, 2));
+
     if (result && !result.error) {
-      return {
-        id: result.email,
-        email: result.email,
-        name: result.nome || result.email,
-        role: result.role,
+      // Google Apps Script retorna { success: true, data: {...} }
+      const userData = result.data || result;
+      console.log('📦 getUserByEmail - Dados extraídos:', JSON.stringify(userData, null, 2));
+
+      const user = {
+        id: userData.email,
+        email: userData.email,
+        name: userData.name || userData.nome || userData.email,
+        role: userData.role,
         active: true,
         password: ''
       };
+
+      console.log('✅ getUserByEmail - User FINAL:', JSON.stringify(user, null, 2));
+      console.log('🎭 getUserByEmail - ROLE:', user.role, '(tipo:', typeof user.role, ')');
+
+      return user;
     }
+
+    console.error('❌ getUserByEmail - Sem resultado válido');
     return null;
   }
 
   async getUserById(id: string): Promise<User | null> {
     const result = await this.fetchData('getUserRole', { email: id });
+    console.log('📥 getUserById - Resultado COMPLETO:', JSON.stringify(result, null, 2));
+
     if (result && !result.error) {
-      return {
-        id: result.email,
-        email: result.email,
-        name: result.nome || result.email,
-        role: result.role,
+      // Google Apps Script retorna { success: true, data: {...} }
+      const userData = result.data || result;
+      console.log('📦 getUserById - Dados extraídos:', JSON.stringify(userData, null, 2));
+
+      const user = {
+        id: userData.email,
+        email: userData.email,
+        name: userData.name || userData.nome || userData.email,
+        role: userData.role,
         active: true
       };
+
+      console.log('✅ getUserById - User FINAL:', JSON.stringify(user, null, 2));
+      console.log('🎭 getUserById - ROLE:', user.role, '(tipo:', typeof user.role, ')');
+
+      return user;
     }
+
+    console.error('❌ getUserById - Sem resultado válido');
     return null;
   }
 }
@@ -150,7 +176,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
 
+      console.log('🔐 LOGIN - Email:', email);
       const userData = await sheetsService.getUserByEmail(email.toLowerCase().trim());
+      console.log('👤 LOGIN - Dados recebidos:', JSON.stringify(userData, null, 2));
 
       if (!userData) {
         throw new Error('Usuário não encontrado');
@@ -167,6 +195,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: userData.role,
         active: userData.active
       };
+
+      console.log('💾 LOGIN - Salvando user:', JSON.stringify(userWithoutPassword, null, 2));
+      console.log('🎭 LOGIN - ROLE a ser salvo:', userWithoutPassword.role);
+      console.log('🔍 LOGIN - role === "admin":', userWithoutPassword.role === 'admin');
+      console.log('🔍 LOGIN - role === "analista":', userWithoutPassword.role === 'analista');
 
       setUser(userWithoutPassword);
       localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
