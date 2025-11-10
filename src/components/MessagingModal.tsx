@@ -125,20 +125,19 @@ export default function MessagingModal({
         const personalizedContent = personalizeMessage(content, candidate);
         const personalizedSubject = messageType === 'email' ? personalizeMessage(subject, candidate) : null;
 
-        const { error } = await supabase
-          .from('candidates_messages')
-          .insert({
-            candidate_id: candidate.id,
-            message_type: messageType,
-            recipient,
-            subject: personalizedSubject,
-            content: personalizedContent,
-            sent_by: user?.id,
-            status: 'sent',
-            sent_at: new Date().toISOString()
-          });
+        const { googleSheetsService } = await import('../services/googleSheets');
+        const result = await googleSheetsService.logMessage(
+          candidate.id,
+          messageType,
+          recipient,
+          personalizedSubject,
+          personalizedContent,
+          user?.email || 'admin'
+        );
 
-        if (error) throw error;
+        if (!result.success) {
+          console.warn(`Erro ao registrar mensagem para ${candidate.nome_completo || candidate.full_name}: ${result.error}`);
+        }
       }
 
       alert(`Mensagens ${messageType === 'email' ? 'por email' : 'por SMS'} enviadas com sucesso!`);

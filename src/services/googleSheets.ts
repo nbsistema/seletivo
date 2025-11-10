@@ -1,25 +1,106 @@
-// URL do seu script (configurada via variável de ambiente)
 const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbz6BmO1rhI8LTRNzakiQ8ryL1cO2tAaNSFfWx9fh0ZFHqZ0b2FgW4WJxg19B8VC5WkH/exec';
 
-// Exemplo de uso
-async function testarSistema() {
-  try {
-    // Testar conexão
-    const teste = await fetch(`${SCRIPT_URL}?action=test`);
-    const resultadoTeste = await teste.json();
-    console.log('Conexão:', resultadoTeste);
-    
-    // Buscar usuário
-    const usuario = await fetch(`${SCRIPT_URL}?action=getUserRole&email=admin@email.com`);
-    const resultadoUsuario = await usuario.json();
-    console.log('Usuário:', resultadoUsuario);
-    
-    // Listar candidatos
-    const candidatos = await fetch(`${SCRIPT_URL}?action=getCandidates`);
-    const resultadoCandidatos = await candidatos.json();
-    console.log('Candidatos:', resultadoCandidatos);
-    
-  } catch (error) {
-    console.error('Erro:', error);
-  }
+interface GoogleSheetsResponse {
+  success: boolean;
+  data?: any;
+  error?: string;
+  message?: string;
 }
+
+export const googleSheetsService = {
+  async getCandidates(filters?: any): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'getCandidates',
+        ...filters
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar candidatos:', error);
+      return { success: false, error: 'Erro ao buscar candidatos' };
+    }
+  },
+
+  async updateCandidateStatus(
+    registrationNumber: string,
+    statusTriagem: 'Classificado' | 'Desclassificado' | 'Revisar',
+    options?: {
+      reasonId?: string;
+      notes?: string;
+      analystEmail?: string;
+    }
+  ): Promise<GoogleSheetsResponse> {
+    try {
+      const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'updateCandidateStatus',
+          registrationNumber,
+          statusTriagem,
+          ...options
+        })
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      return { success: false, error: 'Erro ao atualizar status' };
+    }
+  },
+
+  async getCandidatesByStatus(status: 'Classificado' | 'Desclassificado' | 'Revisar'): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'getCandidatesByStatus',
+        status
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar candidatos por status:', error);
+      return { success: false, error: 'Erro ao buscar candidatos por status' };
+    }
+  },
+
+  async logMessage(
+    registrationNumber: string,
+    messageType: 'email' | 'sms',
+    recipient: string,
+    subject: string | null,
+    content: string,
+    sentBy: string
+  ): Promise<GoogleSheetsResponse> {
+    try {
+      const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'logMessage',
+          registrationNumber,
+          messageType,
+          recipient,
+          subject,
+          content,
+          sentBy
+        })
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao registrar mensagem:', error);
+      return { success: false, error: 'Erro ao registrar mensagem' };
+    }
+  }
+};

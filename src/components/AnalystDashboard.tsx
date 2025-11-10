@@ -67,17 +67,18 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
     if (!selectedCandidate || !user) return;
 
     try {
-      const { error } = await supabase
-        .from('candidates')
-        .update({
-          status_triagem: 'Classificado',
-          screened_by: user.id,
-          screened_at: new Date().toISOString(),
-          status: 'concluido'
-        })
-        .eq('id', selectedCandidate.id);
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.updateCandidateStatus(
+        selectedCandidate.registration_number,
+        'Classificado',
+        {
+          analystEmail: user.email
+        }
+      );
 
-      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao classificar');
+      }
 
       await loadCandidates();
       await loadStats();
@@ -98,19 +99,20 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
     if (!selectedCandidate || !user) return;
 
     try {
-      const { error } = await supabase
-        .from('candidates')
-        .update({
-          status_triagem: 'Desclassificado',
-          disqualification_reason_id: reasonId,
-          screening_notes: notes,
-          screened_by: user.id,
-          screened_at: new Date().toISOString(),
-          status: 'concluido'
-        })
-        .eq('id', selectedCandidate.id);
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.updateCandidateStatus(
+        selectedCandidate.registration_number,
+        'Desclassificado',
+        {
+          reasonId,
+          notes,
+          analystEmail: user.email
+        }
+      );
 
-      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao desclassificar');
+      }
 
       await loadCandidates();
       await loadStats();
@@ -131,17 +133,18 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
     if (!selectedCandidate || !user) return;
 
     try {
-      const { error } = await supabase
-        .from('candidates')
-        .update({
-          status_triagem: 'Revisar',
-          screened_by: user.id,
-          screened_at: new Date().toISOString(),
-          status: 'em_analise'
-        })
-        .eq('id', selectedCandidate.id);
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.updateCandidateStatus(
+        selectedCandidate.registration_number,
+        'Revisar',
+        {
+          analystEmail: user.email
+        }
+      );
 
-      if (error) throw error;
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao marcar para revisão');
+      }
 
       await loadCandidates();
       await loadStats();

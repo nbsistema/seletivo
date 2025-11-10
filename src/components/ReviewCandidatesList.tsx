@@ -31,14 +31,14 @@ export default function ReviewCandidatesList() {
   async function loadReviewCandidates() {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('candidates')
-        .select('*')
-        .eq('status_triagem', 'Revisar')
-        .order('screened_at', { ascending: false });
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.getCandidatesByStatus('Revisar');
 
-      if (error) throw error;
-      setCandidates(data || []);
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao carregar candidatos');
+      }
+
+      setCandidates(result.data || []);
     } catch (error) {
       console.error('Erro ao carregar candidatos para revisão:', error);
     } finally {

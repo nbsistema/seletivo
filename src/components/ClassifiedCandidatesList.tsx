@@ -36,14 +36,14 @@ export default function ClassifiedCandidatesList() {
   async function loadClassifiedCandidates() {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('candidates')
-        .select('*')
-        .eq('status_triagem', 'Classificado')
-        .order('screened_at', { ascending: false });
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.getCandidatesByStatus('Classificado');
 
-      if (error) throw error;
-      setCandidates(data || []);
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao carregar candidatos');
+      }
+
+      setCandidates(result.data || []);
     } catch (error) {
       console.error('Erro ao carregar candidatos classificados:', error);
     } finally {

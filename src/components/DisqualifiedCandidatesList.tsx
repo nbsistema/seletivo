@@ -34,17 +34,14 @@ export default function DisqualifiedCandidatesList() {
   async function loadDisqualifiedCandidates() {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('candidates')
-        .select(`
-          *,
-          disqualification_reason:disqualification_reasons(reason)
-        `)
-        .eq('status_triagem', 'Desclassificado')
-        .order('screened_at', { ascending: false });
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.getCandidatesByStatus('Desclassificado');
 
-      if (error) throw error;
-      setCandidates(data || []);
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao carregar candidatos');
+      }
+
+      setCandidates(result.data || []);
     } catch (error) {
       console.error('Erro ao carregar candidatos desclassificados:', error);
     } finally {
