@@ -83,16 +83,44 @@ function getCurrentTimestamp() {
 // FUNÇÕES DE USUÁRIOS
 // ============================================
 
+function initUsuariosSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_USUARIOS);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_USUARIOS);
+    sheet.getRange('A1:D1').setValues([['Email', 'Nome', 'Role', 'ID']]);
+
+    // Adicionar usuários padrão
+    const defaultUsers = [
+      ['admin@email.com', 'Administrador', 'admin', 'admin@email.com'],
+      ['analista@email.com', 'Analista', 'analista', 'analista@email.com']
+    ];
+
+    sheet.getRange(2, 1, defaultUsers.length, 4).setValues(defaultUsers);
+
+    // Formatar cabeçalho
+    sheet.getRange('A1:D1').setFontWeight('bold').setBackground('#4285f4').setFontColor('#ffffff');
+  }
+
+  return sheet;
+}
+
 function getUserRole(params) {
   const ss = getSpreadsheet();
-  const sheet = ss.getSheetByName(SHEET_USUARIOS);
+  const sheet = initUsuariosSheet(); // Garante que a aba existe
   const data = sheet.getDataRange().getValues();
 
+  // Normalizar email para comparação (minúsculas e sem espaços)
+  const emailToFind = params.email ? params.email.toLowerCase().trim() : '';
+
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === params.email) {
+    const emailInSheet = data[i][0] ? data[i][0].toLowerCase().trim() : '';
+
+    if (emailInSheet === emailToFind) {
       return {
         email: data[i][0],
-        name: data[i][1],
+        name: data[i][1] || data[i][0],
         role: data[i][2],
         id: data[i][3] || data[i][0]
       };
