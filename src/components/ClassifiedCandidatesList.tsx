@@ -1,26 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, Mail, MessageSquare, Loader2 } from 'lucide-react';
 import MessagingModal from './MessagingModal';
-
-interface Candidate {
-  id: string;
-  full_name?: string;
-  social_name?: string;
-  nome_completo?: string;
-  nome_social?: string;
-  cpf?: string;
-  cpf_numero?: string;
-  email?: string;
-  telefone?: string;
-  desired_area?: string;
-  area_atuacao_pretendida?: string;
-  desired_position_admin?: boolean;
-  desired_position_assistant?: boolean;
-  cargo_administrativo?: string | boolean;
-  cargo_assistencial?: string | boolean;
-  screened_at?: string;
-  screened_by?: string;
-}
+import type { Candidate } from '../types/candidate';
 
 export default function ClassifiedCandidatesList() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -36,15 +17,44 @@ export default function ClassifiedCandidatesList() {
     try {
       setLoading(true);
       const { googleSheetsService } = await import('../services/googleSheets');
+
+      console.log('🚀 Iniciando busca por candidatos classificados...');
       const result = await googleSheetsService.getCandidatesByStatus('Classificado');
 
+      console.log('📊 Resultado completo:', JSON.stringify(result, null, 2));
+      console.log('✅ result.success:', result.success);
+      console.log('📦 result.data:', result.data);
+      console.log('📦 Tipo de result.data:', typeof result.data);
+      console.log('📦 É array?', Array.isArray(result.data));
+
       if (!result.success) {
-        throw new Error(result.error || 'Erro ao carregar candidatos');
+        console.error('❌ Erro retornado:', result.error);
+        alert(`Erro ao carregar candidatos: ${result.error}`);
+        return;
       }
 
-      setCandidates(result.data || []);
+      let candidatesData: Candidate[] = [];
+
+      if (Array.isArray(result.data)) {
+        candidatesData = result.data;
+      } else if (result.data && typeof result.data === 'object') {
+        if (Array.isArray((result.data as any).candidates)) {
+          candidatesData = (result.data as any).candidates;
+        }
+      }
+
+      console.log('📋 Candidatos extraídos:', candidatesData);
+      console.log('📏 Total:', candidatesData.length);
+
+      if (candidatesData.length > 0) {
+        console.log('👤 Primeiro candidato:', JSON.stringify(candidatesData[0], null, 2));
+        console.log('🔑 Campos:', Object.keys(candidatesData[0]));
+      }
+
+      setCandidates(candidatesData);
     } catch (error) {
-      console.error('Erro ao carregar candidatos classificados:', error);
+      console.error('❌ Erro ao carregar candidatos classificados:', error);
+      alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
     }
@@ -70,20 +80,6 @@ export default function ClassifiedCandidatesList() {
 
   function getSelectedCandidatesData() {
     return candidates.filter(c => selectedCandidates.has(c.id));
-  }
-
-  function getCargo(candidate: Candidate) {
-    if (candidate.cargo_administrativo && candidate.cargo_administrativo !== 'false') {
-      return typeof candidate.cargo_administrativo === 'string'
-        ? candidate.cargo_administrativo
-        : 'Administrativo';
-    }
-    if (candidate.cargo_assistencial && candidate.cargo_assistencial !== 'false') {
-      return typeof candidate.cargo_assistencial === 'string'
-        ? candidate.cargo_assistencial
-        : 'Assistencial';
-    }
-    return 'Não informado';
   }
 
   if (loading) {
@@ -162,51 +158,56 @@ export default function ClassifiedCandidatesList() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {candidates.map((candidate) => (
-              <tr
-                key={candidate.id}
-                className={`hover:bg-gray-50 transition-colors ${
-                  selectedCandidates.has(candidate.id) ? 'bg-blue-50' : ''
-                }`}
-              >
-                <td className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedCandidates.has(candidate.id)}
-                    onChange={() => toggleCandidate(candidate.id)}
-                    className="rounded border-gray-300"
-                  />
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-800 font-medium">
-                  {candidate.nome_completo || candidate.full_name || 'Não informado'}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {candidate.nome_social || candidate.social_name || '-'}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {candidate.area_atuacao_pretendida || candidate.desired_area || 'Não informado'}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {getCargo(candidate)}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600 font-mono">
-                  {candidate.cpf_numero || candidate.cpf || 'Não informado'}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {candidate.email ? (
-                    <a href={`mailto:${candidate.email}`} className="text-blue-600 hover:underline flex items-center gap-1">
-                      <Mail className="w-3 h-3" />
-                      {candidate.email}
-                    </a>
-                  ) : (
-                    'Não informado'
-                  )}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {candidate.telefone || 'Não informado'}
-                </td>
-              </tr>
-            ))}
+            {candidates.map((candidate) => {
+              const email = (candidate as any).EMAIL || (candidate as any).Email || (candidate as any).email;
+              const telefone = (candidate as any).TELEFONE || (candidate as any).Telefone || (candidate as any).telefone;
+
+              return (
+                <tr
+                  key={candidate.id}
+                  className={`hover:bg-gray-50 transition-colors ${
+                    selectedCandidates.has(candidate.id) ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedCandidates.has(candidate.id)}
+                      onChange={() => toggleCandidate(candidate.id)}
+                      className="rounded border-gray-300"
+                    />
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-800 font-medium">
+                    {candidate.NOMECOMPLETO || 'Não informado'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {candidate.NOMESOCIAL || '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {candidate.AREAATUACAO || 'Não informado'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {candidate.CARGOPRETENDIDO || 'Não informado'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600 font-mono">
+                    {candidate.CPF || 'Não informado'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {email ? (
+                      <a href={`mailto:${email}`} className="text-blue-600 hover:underline flex items-center gap-1">
+                        <Mail className="w-3 h-3" />
+                        {email}
+                      </a>
+                    ) : (
+                      'Não informado'
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {telefone || 'Não informado'}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

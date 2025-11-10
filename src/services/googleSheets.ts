@@ -81,7 +81,11 @@ export const googleSheetsService = {
         status
       });
 
-      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+      const url = `${SCRIPT_URL}?${params.toString()}`;
+      console.log('🔗 getCandidatesByStatus - URL:', url);
+      console.log('📊 Status buscado:', status);
+
+      const response = await fetch(url, {
         method: 'GET',
         mode: 'cors',
         headers: {
@@ -89,14 +93,21 @@ export const googleSheetsService = {
         }
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('📦 Dados recebidos:', data);
+      console.log('✅ success:', data.success);
+      console.log('📋 data.data:', data.data);
+
       return data;
     } catch (error) {
-      console.error('Erro ao buscar candidatos por status:', error);
+      console.error('❌ Erro ao buscar candidatos por status:', error);
       return { success: false, error: 'Erro ao buscar candidatos por status' };
     }
   },
