@@ -10,7 +10,9 @@ import ReviewCandidatesList from './ReviewCandidatesList';
 import { BarChart3, Users, Upload, CheckCircle, XCircle, Eye } from 'lucide-react';
 
 export default function AdminDashboard() {
+  console.log('🎨 AdminDashboard RENDERIZADO - Este é o painel de ADMINISTRADOR');
   const { user, logout } = useAuth();
+  console.log('👤 AdminDashboard - Usuário:', user);
   const [activeTab, setActiveTab] = useState<'allocation' | 'my-candidates' | 'import' | 'classified' | 'disqualified' | 'review'>('allocation');
   const [stats, setStats] = useState({
     total: 0,

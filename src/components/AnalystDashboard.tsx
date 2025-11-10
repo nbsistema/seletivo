@@ -10,7 +10,9 @@ interface AnalystDashboardProps {
 }
 
 export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboardProps) {
+  console.log('📊 AnalystDashboard RENDERIZADO - Este é o painel de ANALISTA');
   const { user, logout } = useAuth();
+  console.log('👤 AnalystDashboard - Usuário:', user);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
