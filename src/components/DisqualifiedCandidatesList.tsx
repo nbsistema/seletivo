@@ -25,6 +25,8 @@ interface Candidate {
   observacoes_triagem?: string;
   screened_at?: string;
   data_hora_triagem?: string;
+  assigned_at?: string; // NOVA COLUNA
+  assigned_to?: string; // NOVA COLUNA
   disqualification_reason?: {
     reason: string;
   };
@@ -82,9 +84,18 @@ export default function DisqualifiedCandidatesList() {
   }
 
   function getDataTriagem(candidate: Candidate) {
-    return candidate.data_hora_triagem || 
+    // PRIORIDADE: assigned_at > data_hora_triagem > screened_at
+    return candidate.assigned_at || 
+           candidate.data_hora_triagem || 
            candidate.screened_at || 
            null;
+  }
+
+  function getAnalistaTriagem(candidate: Candidate) {
+    // PRIORIDADE: assigned_to > analista_triagem
+    return candidate.assigned_to || 
+           candidate.analista_triagem || 
+           'Analista não informado';
   }
 
   function getObservacoes(candidate: Candidate) {
@@ -105,6 +116,38 @@ export default function DisqualifiedCandidatesList() {
            candidate.area_atuacao_pretendida || 
            candidate.desired_area || 
            'Área não informada';
+  }
+
+  // Função para formatar a data de forma mais legível
+  function formatarData(dataString: string | null) {
+    if (!dataString) return '-';
+    
+    try {
+      const data = new Date(dataString);
+      return data.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return dataString; // Retorna o original se houver erro
+    }
+  }
+
+  // Função para formatar apenas a data (sem hora)
+  function formatarDataCurta(dataString: string | null) {
+    if (!dataString) return '-';
+    
+    try {
+      const data = new Date(dataString);
+      return data.toLocaleDateString('pt-BR');
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return dataString;
+    }
   }
 
   if (loading) {
@@ -157,7 +200,7 @@ export default function DisqualifiedCandidatesList() {
                 Motivo
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                Data
+                Data da Triagem
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                 Analista
@@ -193,12 +236,10 @@ export default function DisqualifiedCandidatesList() {
                   </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">
-                  {getDataTriagem(candidate)
-                    ? new Date(getDataTriagem(candidate)!).toLocaleDateString('pt-BR')
-                    : '-'}
+                  {formatarDataCurta(getDataTriagem(candidate))}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">
-                  {candidate.analista_triagem || '-'}
+                  {getAnalistaTriagem(candidate)}
                 </td>
                 <td className="px-4 py-3">
                   <button
@@ -297,21 +338,28 @@ export default function DisqualifiedCandidatesList() {
                 </div>
               )}
 
-              {/* Metadados */}
+              {/* Metadados da Triagem */}
               <div className="grid grid-cols-2 gap-6 border-t pt-6">
                 <div>
-                  <p className="text-sm text-gray-600 font-medium">Data da Desclassificação</p>
-                  <p className="text-gray-800 mt-1">
-                    {getDataTriagem(selectedCandidate)
-                      ? new Date(getDataTriagem(selectedCandidate)!).toLocaleString('pt-BR')
-                      : 'Não informado'}
+                  <p className="text-sm text-gray-600 font-medium">Data da Triagem</p>
+                  <p className="text-gray-800 mt-1 font-medium">
+                    {formatarData(getDataTriagem(selectedCandidate))}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {selectedCandidate.assigned_at && '(assigned_at)'}
+                    {!selectedCandidate.assigned_at && selectedCandidate.data_hora_triagem && '(data_hora_triagem)'}
+                    {!selectedCandidate.assigned_at && !selectedCandidate.data_hora_triagem && selectedCandidate.screened_at && '(screened_at)'}
                   </p>
                 </div>
 
                 <div>
                   <p className="text-sm text-gray-600 font-medium">Analista Responsável</p>
-                  <p className="text-gray-800 mt-1">
-                    {selectedCandidate.analista_triagem || 'Não informado'}
+                  <p className="text-gray-800 mt-1 font-medium">
+                    {getAnalistaTriagem(selectedCandidate)}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {selectedCandidate.assigned_to && '(assigned_to)'}
+                    {!selectedCandidate.assigned_to && selectedCandidate.analista_triagem && '(analista_triagem)'}
                   </p>
                 </div>
               </div>
