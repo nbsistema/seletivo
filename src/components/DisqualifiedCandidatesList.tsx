@@ -36,9 +36,9 @@ export default function DisqualifiedCandidatesList() {
 
       let candidatesData: Candidate[] = [];
 
-      // Tenta extrair os candidatos de diferentes formatos
+      // A função getCandidatesByStatus retorna diretamente um array no data
       if (Array.isArray(result.data)) {
-        console.log('✅ result.data é um array direto');
+        console.log('✅ result.data é um array direto com', result.data.length, 'candidatos');
         candidatesData = result.data;
       } else if (result.data && typeof result.data === 'object') {
         console.log('⚠️ result.data é um objeto, tentando extrair candidatos...');
@@ -59,7 +59,6 @@ export default function DisqualifiedCandidatesList() {
 
       console.log('\n📋 CANDIDATOS EXTRAÍDOS:');
       console.log('Total:', candidatesData.length);
-      console.log('Array completo:', candidatesData);
 
       if (candidatesData.length > 0) {
         console.log('\n👤 PRIMEIRO CANDIDATO:');
@@ -68,6 +67,7 @@ export default function DisqualifiedCandidatesList() {
         console.log('📝 CPF:', candidatesData[0].CPF);
         console.log('📝 Nome:', candidatesData[0].NOMECOMPLETO);
         console.log('📝 Status:', (candidatesData[0] as any).Status);
+        console.log('📝 Motivo:', (candidatesData[0] as any)['Motivo Desclassificação']);
       } else {
         console.warn('⚠️ Nenhum candidato desclassificado encontrado!');
         console.warn('💡 Verifique se existem candidatos com Status = "Desclassificado" na planilha');

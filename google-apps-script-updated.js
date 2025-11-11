@@ -290,9 +290,20 @@ function updateCandidateStatus(params) {
 function getCandidatesByStatus(params) {
   const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_CANDIDATOS);
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
 
+  if (!sheet) {
+    Logger.log('❌ Aba CANDIDATOS não encontrada!');
+    return [];
+  }
+
+  const data = sheet.getDataRange().getValues();
+
+  if (data.length <= 1) {
+    Logger.log('⚠️ Aba CANDIDATOS vazia');
+    return [];
+  }
+
+  const headers = data[0];
   Logger.log('📊 getCandidatesByStatus - Buscando status:', params.status);
   Logger.log('📋 Cabeçalhos disponíveis:', headers.join(', '));
 
@@ -302,6 +313,11 @@ function getCandidatesByStatus(params) {
 
   Logger.log('🔍 Status col:', statusCol);
   Logger.log('🔍 CPF col:', cpfCol);
+
+  if (statusCol < 0) {
+    Logger.log('❌ Coluna Status não encontrada!');
+    return [];
+  }
 
   for (let i = 1; i < data.length; i++) {
     const rowStatus = data[i][statusCol];
