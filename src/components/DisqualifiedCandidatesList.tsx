@@ -347,7 +347,7 @@ export default function DisqualifiedCandidatesList() {
               <div className="border-t pt-6">
                 <p className="text-sm text-gray-600 font-medium">Motivo da Desclassificação</p>
                 <p className="text-lg text-red-600 font-semibold mt-2 p-3 bg-red-50 rounded-lg">
-                  {getDisqualificationReasons(selectedCandidate)}
+                  {getMotivoDesclassificacao(selectedCandidate)}
                 </p>
               </div>
 
