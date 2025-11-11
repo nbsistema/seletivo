@@ -78,11 +78,34 @@ export default function DisqualifiedCandidatesList() {
 
   function getMotivoDesclassificacao(candidate: Candidate) {
     // Tenta diferentes campos onde o motivo pode estar armazenado
-    return candidate.disqualification_reason?.reason || 
-           candidate.motivo_desclassificacao || 
-           'Motivo não informado';
-  }
+    const motivo = candidate.disqualification_reason?.reason || 
+                  candidate.motivo_desclassificacao || 
+                  candidate.screening_notes || // Notas de triagem podem conter o motivo
+                  candidate.observacoes_triagem || // Observações em português
+                  null;
 
+    // Se não encontrou nenhum motivo, retorna padrão
+    if (!motivo) {
+        return 'Motivo não informado';
+    }
+
+    // Remove valores booleanos que podem ser usados como placeholders
+    if (typeof motivo === 'boolean') {
+        return 'Motivo não informado';
+    }
+
+    // Se o motivo for muito curto ou genérico, considera como não informado
+    if (motivo.trim().length < 3 || 
+        motivo.toLowerCase().includes('não informado') ||
+        motivo.toLowerCase().includes('nao informado') ||
+        motivo === '-' || 
+        motivo === 'null' ||
+        motivo === 'undefined') {
+        return 'Motivo não informado';
+    }
+
+    return motivo;
+}
   function getDataTriagem(candidate: Candidate) {
     // PRIORIDADE: assigned_at > data_hora_triagem > screened_at
     return candidate.assigned_at || 
