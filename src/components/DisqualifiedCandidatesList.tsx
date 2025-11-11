@@ -1,6 +1,38 @@
 import { useState, useEffect } from 'react';
 import { XCircle, Loader2 } from 'lucide-react';
-import type { Candidate } from '../types/candidate';
+
+interface Candidate {
+  id: string;
+  registration_number?: string;
+  NOMECOMPLETO?: string;
+  full_name?: string;
+  nome_completo?: string;
+  nome_social?: string;
+  CPF?: string;
+  cpf?: string;
+  cpf_numero?: string;
+  email?: string;
+  telefone?: string;
+  AREAATUACAO?: string;
+  desired_area?: string;
+  area_atuacao_pretendida?: string;
+  CARGOPRETENDIDO?: string;
+  cargo_administrativo?: string | boolean;
+  cargo_assistencial?: string | boolean;
+  status?: string;
+  status_triagem?: string;
+  screening_notes?: string;
+  observacoes_triagem?: string;
+  screened_at?: string;
+  data_hora_triagem?: string;
+  assigned_at?: string; // NOVA COLUNA
+  assigned_to?: string; // NOVA COLUNA
+  disqualification_reason?: {
+    reason: string;
+  };
+  motivo_desclassificacao?: string;
+  analista_triagem?: string;
+}
 
 export default function DisqualifiedCandidatesList() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -14,147 +46,115 @@ export default function DisqualifiedCandidatesList() {
   async function loadDisqualifiedCandidates() {
     try {
       setLoading(true);
+      console.log('🔍 Buscando candidatos desclassificados...');
+      
       const { googleSheetsService } = await import('../services/googleSheets');
+      
+      // CORREÇÃO: Usar 'desclassificada' (minúsculo) em vez de 'Desclassificado'
+      const result = await googleSheetsService.getCandidatesByStatus('desclassificada');
 
-      console.log('🚀 Iniciando busca por candidatos desclassificados...');
-      console.log('📡 Buscando status: "Desclassificado"');
-
-      const result = await googleSheetsService.getCandidatesByStatus('Desclassificado');
-
-      console.log('\n📊 RESULTADO COMPLETO DA API:');
-      console.log('JSON:', JSON.stringify(result, null, 2));
-      console.log('✅ result.success:', result.success);
-      console.log('📦 result.data (tipo):', typeof result.data);
-      console.log('📦 result.data (é array?):', Array.isArray(result.data));
-      console.log('📦 result.data (conteúdo):', result.data);
+      console.log('📊 Resultado da busca:', result);
 
       if (!result.success) {
-        console.error('❌ Erro retornado:', result.error);
-        alert(`Erro ao carregar candidatos: ${result.error}`);
-        return;
+        throw new Error(result.error || 'Erro ao carregar candidatos');
       }
 
-      let candidatesData: Candidate[] = [];
-
-      // A função getCandidatesByStatus retorna diretamente um array no data
-      if (Array.isArray(result.data)) {
-        console.log('✅ result.data é um array direto com', result.data.length, 'candidatos');
-        candidatesData = result.data;
-      } else if (result.data && typeof result.data === 'object') {
-        console.log('⚠️ result.data é um objeto, tentando extrair candidatos...');
-
-        // Tenta diferentes propriedades
-        if (Array.isArray((result.data as any).candidates)) {
-          console.log('✅ Encontrado em result.data.candidates');
-          candidatesData = (result.data as any).candidates;
-        } else if (Array.isArray((result.data as any).data)) {
-          console.log('✅ Encontrado em result.data.data');
-          candidatesData = (result.data as any).data;
-        } else {
-          console.log('📋 Propriedades disponíveis em result.data:', Object.keys(result.data));
-        }
-      } else {
-        console.warn('⚠️ result.data não é array nem objeto:', result.data);
-      }
-
-      console.log('\n📋 CANDIDATOS EXTRAÍDOS:');
-      console.log('Total:', candidatesData.length);
-
-      if (candidatesData.length > 0) {
-        console.log('\n👤 PRIMEIRO CANDIDATO:');
-        console.log('JSON:', JSON.stringify(candidatesData[0], null, 2));
-        console.log('🔑 Campos:', Object.keys(candidatesData[0]));
-        console.log('📝 CPF:', candidatesData[0].CPF);
-        console.log('📝 Nome:', candidatesData[0].NOMECOMPLETO);
-        console.log('📝 Status:', (candidatesData[0] as any).Status);
-        console.log('📝 Motivo:', (candidatesData[0] as any)['Motivo Desclassificação']);
-      } else {
-        console.warn('⚠️ Nenhum candidato desclassificado encontrado!');
-        console.warn('💡 Verifique se existem candidatos com Status = "Desclassificado" na planilha');
-      }
-
-      setCandidates(candidatesData);
+      setCandidates(result.data || []);
+      console.log('✅ Candidatos desclassificados carregados:', result.data?.length || 0);
+      
     } catch (error) {
-      console.error('❌ ERRO ao carregar candidatos desclassificados:', error);
-      console.error('Stack:', error instanceof Error ? error.stack : 'N/A');
-      alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      console.error('❌ Erro ao carregar candidatos desclassificados:', error);
     } finally {
       setLoading(false);
     }
   }
 
-  function getMotivo(candidate: Candidate): string {
-    const candidateAny = candidate as any;
+  function getCargo(candidate: Candidate) {
+    return candidate.CARGOPRETENDIDO || 
+           candidate.cargo_administrativo || 
+           candidate.cargo_assistencial || 
+           'Não informado';
+  }
 
-    // Lista COMPLETA de campos possíveis para o motivo
-    const possibleFields = [
-      'Motivo Desclassificação',
-      'MOTIVO DESCLASSIFICAÇÃO',
-      'Motivo Desclassificacao',
-      'MOTIVO DESCLASSIFICACAO',
-      'MotivoDesclassificacao',
-      'Motivo',
-      'MOTIVO',
-      'motivo_desclassificacao',
-      'motivo',
-      'disqualification_reason',
-      'reason'
-    ];
+  function getMotivoDesclassificacao(candidate: Candidate) {
+    // Tenta diferentes campos onde o motivo pode estar armazenado
+    return candidate.disqualification_reason?.reason || 
+           candidate.motivo_desclassificacao || 
+           'Motivo não informado';
+  }
 
-    console.log('🔍 Buscando motivo para candidato:', candidate.CPF);
-    console.log('📦 Todos os campos do candidato:', Object.keys(candidateAny));
+  function getDataTriagem(candidate: Candidate) {
+    // PRIORIDADE: assigned_at > data_hora_triagem > screened_at
+    return candidate.assigned_at || 
+           candidate.data_hora_triagem || 
+           candidate.screened_at || 
+           null;
+  }
 
-    // Tentar cada campo possível
-    for (const field of possibleFields) {
-      const value = candidateAny[field];
+  function getAnalistaTriagem(candidate: Candidate) {
+    // PRIORIDADE: assigned_to > analista_triagem
+    return candidate.assigned_to || 
+           candidate.analista_triagem || 
+           'Analista não informado';
+  }
 
-      if (value) {
-        console.log(`✅ Campo "${field}" encontrado:`, value);
+  function getObservacoes(candidate: Candidate) {
+    return candidate.observacoes_triagem || 
+           candidate.screening_notes || 
+           null;
+  }
 
-        // Se for string e não vazia
-        if (typeof value === 'string' && value.trim()) {
-          return value.trim();
-        }
+  function getNomeCompleto(candidate: Candidate) {
+    return candidate.NOMECOMPLETO || 
+           candidate.nome_completo || 
+           candidate.full_name || 
+           'Nome não informado';
+  }
 
-        // Se for objeto com propriedade reason
-        if (value && typeof value === 'object' && value.reason) {
-          return value.reason;
-        }
-      }
+  function getAreaAtuacao(candidate: Candidate) {
+    return candidate.AREAATUACAO || 
+           candidate.area_atuacao_pretendida || 
+           candidate.desired_area || 
+           'Área não informada';
+  }
+
+  // Função para formatar a data de forma mais legível
+  function formatarData(dataString: string | null) {
+    if (!dataString) return '-';
+    
+    try {
+      const data = new Date(dataString);
+      return data.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return dataString; // Retorna o original se houver erro
     }
-
-    console.warn('⚠️ Nenhum campo de motivo encontrado para', candidate.CPF);
-    return 'Não informado';
   }
 
-  function getObservacoes(candidate: Candidate): string | undefined {
-    const candidateAny = candidate as any;
-    return (
-      candidateAny['Observações'] ||
-      candidateAny['OBSERVAÇÕES'] ||
-      candidateAny['Observacoes'] ||
-      candidateAny['OBSERVACOES'] ||
-      candidateAny.observacoes ||
-      candidateAny.screening_notes ||
-      candidateAny.notes
-    );
-  }
-
-  function getDataTriagem(candidate: Candidate): string | undefined {
-    const candidateAny = candidate as any;
-    return (
-      candidateAny['Data Triagem'] ||
-      candidateAny['DATA TRIAGEM'] ||
-      candidateAny['DataTriagem'] ||
-      candidateAny.data_hora_triagem ||
-      candidateAny.screened_at
-    );
+  // Função para formatar apenas a data (sem hora)
+  function formatarDataCurta(dataString: string | null) {
+    if (!dataString) return '-';
+    
+    try {
+      const data = new Date(dataString);
+      return data.toLocaleDateString('pt-BR');
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return dataString;
+    }
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <span className="ml-2 text-gray-600">Carregando candidatos desclassificados...</span>
       </div>
     );
   }
@@ -163,7 +163,10 @@ export default function DisqualifiedCandidatesList() {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <XCircle className="w-16 h-16 text-gray-300 mb-4" />
-        <p className="text-gray-500">Nenhum candidato desclassificado ainda</p>
+        <p className="text-gray-500 text-lg mb-2">Nenhum candidato desclassificado</p>
+        <p className="text-gray-400 text-sm">
+          Os candidatos aparecerão aqui quando forem desclassificados pelos analistas
+        </p>
       </div>
     );
   }
@@ -185,6 +188,9 @@ export default function DisqualifiedCandidatesList() {
                 Nome Completo
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                CPF
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                 Área
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
@@ -194,7 +200,10 @@ export default function DisqualifiedCandidatesList() {
                 Motivo
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                Data
+                Data da Triagem
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                Analista
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                 Ações
@@ -202,132 +211,164 @@ export default function DisqualifiedCandidatesList() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {candidates.map((candidate) => {
-              const dataTriagem = getDataTriagem(candidate);
-              const motivo = getMotivo(candidate);
-
-              return (
-                <tr key={candidate.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-gray-800 font-medium">
-                    {candidate.NOMECOMPLETO || 'Não informado'}
-                    {candidate.NOMESOCIAL && (
-                      <div className="text-xs text-gray-500">
-                        ({candidate.NOMESOCIAL})
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {candidate.AREAATUACAO || 'Não informado'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {candidate.CARGOPRETENDIDO || 'Não informado'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                      {motivo}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {dataTriagem
-                      ? new Date(dataTriagem).toLocaleDateString('pt-BR')
-                      : '-'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => setSelectedCandidate(candidate)}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    >
-                      Ver detalhes
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+            {candidates.map((candidate) => (
+              <tr key={candidate.registration_number || candidate.id} className="hover:bg-gray-50 transition-colors">
+                <td className="px-4 py-3 text-sm text-gray-800 font-medium">
+                  {getNomeCompleto(candidate)}
+                  {candidate.nome_social && (
+                    <div className="text-xs text-gray-500">
+                      ({candidate.nome_social})
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600 font-mono">
+                  {candidate.CPF || candidate.cpf || candidate.cpf_numero || '-'}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">
+                  {getAreaAtuacao(candidate)}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">
+                  {getCargo(candidate)}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600 max-w-xs">
+                  <div className="truncate" title={getMotivoDesclassificacao(candidate)}>
+                    {getMotivoDesclassificacao(candidate)}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">
+                  {formatarDataCurta(getDataTriagem(candidate))}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">
+                  {getAnalistaTriagem(candidate)}
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => setSelectedCandidate(candidate)}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium px-3 py-1 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                  >
+                    Ver detalhes
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
+      {/* Modal de Detalhes */}
       {selectedCandidate && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
               <h3 className="text-xl font-bold text-gray-800">Detalhes da Desclassificação</h3>
               <button
                 onClick={() => setSelectedCandidate(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <XCircle className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <p className="text-sm text-gray-600">Nome Completo</p>
-                <p className="text-lg font-semibold text-gray-800">
-                  {selectedCandidate.NOMECOMPLETO || 'Não informado'}
-                </p>
-              </div>
-
-              {selectedCandidate.NOMESOCIAL && (
+            <div className="p-6 space-y-6">
+              {/* Informações Pessoais */}
+              <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <p className="text-sm text-gray-600">Nome Social</p>
-                  <p className="text-lg font-semibold text-gray-800">
-                    {selectedCandidate.NOMESOCIAL}
+                  <p className="text-sm text-gray-600 font-medium">Nome Completo</p>
+                  <p className="text-lg text-gray-800 mt-1">
+                    {getNomeCompleto(selectedCandidate)}
                   </p>
                 </div>
-              )}
 
-              <div>
-                <p className="text-sm text-gray-600">CPF</p>
-                <p className="text-lg font-mono text-gray-800">
-                  {selectedCandidate.CPF || 'Não informado'}
+                {selectedCandidate.nome_social && (
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Nome Social</p>
+                    <p className="text-lg text-gray-800 mt-1">
+                      {selectedCandidate.nome_social}
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">CPF</p>
+                  <p className="text-lg font-mono text-gray-800 mt-1">
+                    {selectedCandidate.CPF || selectedCandidate.cpf || selectedCandidate.cpf_numero || 'Não informado'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Número de Inscrição</p>
+                  <p className="text-lg font-mono text-gray-800 mt-1">
+                    {selectedCandidate.registration_number || 'Não informado'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Informações da Vaga */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Área de Atuação</p>
+                  <p className="text-lg text-gray-800 mt-1">
+                    {getAreaAtuacao(selectedCandidate)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Cargo Pretendido</p>
+                  <p className="text-lg text-gray-800 mt-1">
+                    {getCargo(selectedCandidate)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Motivo da Desclassificação */}
+              <div className="border-t pt-6">
+                <p className="text-sm text-gray-600 font-medium">Motivo da Desclassificação</p>
+                <p className="text-lg text-red-600 font-semibold mt-2 p-3 bg-red-50 rounded-lg">
+                  {getMotivoDesclassificacao(selectedCandidate)}
                 </p>
               </div>
 
-              <div>
-                <p className="text-sm text-gray-600">Área de Atuação</p>
-                <p className="text-lg text-gray-800">
-                  {selectedCandidate.AREAATUACAO || 'Não informado'}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-gray-600">Cargo Pretendido</p>
-                <p className="text-lg text-gray-800">
-                  {selectedCandidate.CARGOPRETENDIDO || 'Não informado'}
-                </p>
-              </div>
-
-              <div className="border-t pt-4">
-                <p className="text-sm text-gray-600">Motivo da Desclassificação</p>
-                <p className="text-lg text-red-600 font-semibold">
-                  {getMotivo(selectedCandidate)}
-                </p>
-              </div>
-
+              {/* Observações */}
               {getObservacoes(selectedCandidate) && (
                 <div>
-                  <p className="text-sm text-gray-600">Observações</p>
-                  <p className="text-gray-800 whitespace-pre-wrap">
+                  <p className="text-sm text-gray-600 font-medium">Observações do Analista</p>
+                  <p className="text-gray-800 mt-2 p-3 bg-gray-50 rounded-lg whitespace-pre-wrap">
                     {getObservacoes(selectedCandidate)}
                   </p>
                 </div>
               )}
 
-              <div>
-                <p className="text-sm text-gray-600">Data da Desclassificação</p>
-                <p className="text-gray-800">
-                  {getDataTriagem(selectedCandidate)
-                    ? new Date(getDataTriagem(selectedCandidate)!).toLocaleString('pt-BR')
-                    : 'Não informado'}
-                </p>
+              {/* Metadados da Triagem */}
+              <div className="grid grid-cols-2 gap-6 border-t pt-6">
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Data da Triagem</p>
+                  <p className="text-gray-800 mt-1 font-medium">
+                    {formatarData(getDataTriagem(selectedCandidate))}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {selectedCandidate.assigned_at && '(assigned_at)'}
+                    {!selectedCandidate.assigned_at && selectedCandidate.data_hora_triagem && '(data_hora_triagem)'}
+                    {!selectedCandidate.assigned_at && !selectedCandidate.data_hora_triagem && selectedCandidate.screened_at && '(screened_at)'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-600 font-medium">Analista Responsável</p>
+                  <p className="text-gray-800 mt-1 font-medium">
+                    {getAnalistaTriagem(selectedCandidate)}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {selectedCandidate.assigned_to && '(assigned_to)'}
+                    {!selectedCandidate.assigned_to && selectedCandidate.analista_triagem && '(analista_triagem)'}
+                  </p>
+                </div>
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 p-6 border-t bg-gray-50">
               <button
                 onClick={() => setSelectedCandidate(null)}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
               >
                 Fechar
               </button>
