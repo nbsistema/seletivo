@@ -277,18 +277,48 @@ function getCandidatesByStatus(params) {
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
 
+  Logger.log('📊 getCandidatesByStatus - Buscando status:', params.status);
+  Logger.log('📋 Cabeçalhos disponíveis:', headers.join(', '));
+
   const statusCol = headers.indexOf('Status');
+  const cpfCol = headers.indexOf('CPF');
   const candidates = [];
 
+  Logger.log('🔍 Status col:', statusCol);
+  Logger.log('🔍 CPF col:', cpfCol);
+
   for (let i = 1; i < data.length; i++) {
-    if (data[i][statusCol] === params.status) {
+    const rowStatus = data[i][statusCol];
+
+    if (rowStatus === params.status) {
       const candidate = {};
+
       for (let j = 0; j < headers.length; j++) {
         candidate[headers[j]] = data[i][j];
       }
+
+      // Adicionar id (usando CPF como id)
+      candidate.id = data[i][cpfCol];
+      candidate.registration_number = data[i][cpfCol];
+
       candidates.push(candidate);
+
+      // Log apenas para os primeiros 2 candidatos para não poluir o log
+      if (candidates.length <= 2) {
+        Logger.log('✅ Candidato ' + candidates.length + ' encontrado:');
+        Logger.log('   CPF:', data[i][cpfCol]);
+        Logger.log('   Nome:', candidate['NOMECOMPLETO']);
+        Logger.log('   Status:', rowStatus);
+        if (params.status === 'Desclassificado') {
+          Logger.log('   Motivo Desclassificação:', candidate['Motivo Desclassificação']);
+          Logger.log('   Motivo:', candidate['Motivo']);
+          Logger.log('   MOTIVO:', candidate['MOTIVO']);
+        }
+      }
     }
   }
+
+  Logger.log('📋 Total de candidatos com status "' + params.status + '":', candidates.length);
 
   return candidates;
 }
