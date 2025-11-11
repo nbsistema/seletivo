@@ -17,11 +17,16 @@ export default function DisqualifiedCandidatesList() {
       const { googleSheetsService } = await import('../services/googleSheets');
 
       console.log('🚀 Iniciando busca por candidatos desclassificados...');
+      console.log('📡 Buscando status: "Desclassificado"');
+
       const result = await googleSheetsService.getCandidatesByStatus('Desclassificado');
 
-      console.log('📊 Resultado completo:', JSON.stringify(result, null, 2));
+      console.log('\n📊 RESULTADO COMPLETO DA API:');
+      console.log('JSON:', JSON.stringify(result, null, 2));
       console.log('✅ result.success:', result.success);
-      console.log('📦 result.data:', result.data);
+      console.log('📦 result.data (tipo):', typeof result.data);
+      console.log('📦 result.data (é array?):', Array.isArray(result.data));
+      console.log('📦 result.data (conteúdo):', result.data);
 
       if (!result.success) {
         console.error('❌ Erro retornado:', result.error);
@@ -31,25 +36,47 @@ export default function DisqualifiedCandidatesList() {
 
       let candidatesData: Candidate[] = [];
 
+      // Tenta extrair os candidatos de diferentes formatos
       if (Array.isArray(result.data)) {
+        console.log('✅ result.data é um array direto');
         candidatesData = result.data;
       } else if (result.data && typeof result.data === 'object') {
+        console.log('⚠️ result.data é um objeto, tentando extrair candidatos...');
+
+        // Tenta diferentes propriedades
         if (Array.isArray((result.data as any).candidates)) {
+          console.log('✅ Encontrado em result.data.candidates');
           candidatesData = (result.data as any).candidates;
+        } else if (Array.isArray((result.data as any).data)) {
+          console.log('✅ Encontrado em result.data.data');
+          candidatesData = (result.data as any).data;
+        } else {
+          console.log('📋 Propriedades disponíveis em result.data:', Object.keys(result.data));
         }
+      } else {
+        console.warn('⚠️ result.data não é array nem objeto:', result.data);
       }
 
-      console.log('📋 Candidatos extraídos:', candidatesData);
-      console.log('📏 Total:', candidatesData.length);
+      console.log('\n📋 CANDIDATOS EXTRAÍDOS:');
+      console.log('Total:', candidatesData.length);
+      console.log('Array completo:', candidatesData);
 
       if (candidatesData.length > 0) {
-        console.log('👤 Primeiro candidato:', JSON.stringify(candidatesData[0], null, 2));
-        console.log('🔑 Campos disponíveis:', Object.keys(candidatesData[0]));
+        console.log('\n👤 PRIMEIRO CANDIDATO:');
+        console.log('JSON:', JSON.stringify(candidatesData[0], null, 2));
+        console.log('🔑 Campos:', Object.keys(candidatesData[0]));
+        console.log('📝 CPF:', candidatesData[0].CPF);
+        console.log('📝 Nome:', candidatesData[0].NOMECOMPLETO);
+        console.log('📝 Status:', (candidatesData[0] as any).Status);
+      } else {
+        console.warn('⚠️ Nenhum candidato desclassificado encontrado!');
+        console.warn('💡 Verifique se existem candidatos com Status = "Desclassificado" na planilha');
       }
 
       setCandidates(candidatesData);
     } catch (error) {
-      console.error('❌ Erro ao carregar candidatos desclassificados:', error);
+      console.error('❌ ERRO ao carregar candidatos desclassificados:', error);
+      console.error('Stack:', error instanceof Error ? error.stack : 'N/A');
       alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
