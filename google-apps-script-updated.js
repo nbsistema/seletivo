@@ -252,14 +252,30 @@ function updateCandidateStatus(params) {
     if (cpfValue === searchValueStr || regNumValue === searchValueStr) {
       Logger.log('✅ Candidato encontrado na linha:', i + 1);
 
-      if (statusCol >= 0) sheet.getRange(i + 1, statusCol + 1).setValue(params.statusTriagem);
-      if (analystCol >= 0 && params.analystEmail) sheet.getRange(i + 1, analystCol + 1).setValue(params.analystEmail);
-      if (dateCol >= 0) sheet.getRange(i + 1, dateCol + 1).setValue(getCurrentTimestamp());
+      if (statusCol >= 0) {
+        sheet.getRange(i + 1, statusCol + 1).setValue(params.statusTriagem);
+        Logger.log('   ✅ Status atualizado para:', params.statusTriagem);
+      }
+      if (analystCol >= 0 && params.analystEmail) {
+        sheet.getRange(i + 1, analystCol + 1).setValue(params.analystEmail);
+        Logger.log('   ✅ Analista atualizado para:', params.analystEmail);
+      }
+      if (dateCol >= 0) {
+        sheet.getRange(i + 1, dateCol + 1).setValue(getCurrentTimestamp());
+        Logger.log('   ✅ Data atualizada');
+      }
       if (reasonCol >= 0 && params.reasonId) {
         const reason = getDisqualificationReasonById(params.reasonId);
+        Logger.log('   🔍 Motivo ID:', params.reasonId);
+        Logger.log('   📝 Motivo texto:', reason);
+        Logger.log('   📍 Coluna do motivo:', reasonCol);
         sheet.getRange(i + 1, reasonCol + 1).setValue(reason);
+        Logger.log('   ✅ Motivo salvo na célula!');
       }
-      if (notesCol >= 0 && params.notes) sheet.getRange(i + 1, notesCol + 1).setValue(params.notes);
+      if (notesCol >= 0 && params.notes) {
+        sheet.getRange(i + 1, notesCol + 1).setValue(params.notes);
+        Logger.log('   ✅ Observações salvas:', params.notes);
+      }
 
       Logger.log('✅ Status atualizado com sucesso!');
       return { success: true, message: 'Status atualizado' };
@@ -303,16 +319,26 @@ function getCandidatesByStatus(params) {
 
       candidates.push(candidate);
 
-      // Log apenas para os primeiros 2 candidatos para não poluir o log
-      if (candidates.length <= 2) {
+      // Log apenas para o primeiro candidato para análise completa
+      if (candidates.length === 1) {
         Logger.log('✅ Candidato ' + candidates.length + ' encontrado:');
         Logger.log('   CPF:', data[i][cpfCol]);
         Logger.log('   Nome:', candidate['NOMECOMPLETO']);
         Logger.log('   Status:', rowStatus);
+
         if (params.status === 'Desclassificado') {
-          Logger.log('   Motivo Desclassificação:', candidate['Motivo Desclassificação']);
-          Logger.log('   Motivo:', candidate['Motivo']);
-          Logger.log('   MOTIVO:', candidate['MOTIVO']);
+          Logger.log('\n🔍 ANÁLISE COMPLETA DO MOTIVO:');
+          Logger.log('   candidate["Motivo Desclassificação"]:', candidate['Motivo Desclassificação']);
+          Logger.log('   Tipo:', typeof candidate['Motivo Desclassificação']);
+          Logger.log('   Valor (JSON):', JSON.stringify(candidate['Motivo Desclassificação']));
+
+          // Mostrar TODOS os campos do candidato
+          Logger.log('\n📋 TODOS OS CAMPOS DO CANDIDATO:');
+          for (var key in candidate) {
+            if (candidate.hasOwnProperty(key)) {
+              Logger.log('   "' + key + '": ' + candidate[key]);
+            }
+          }
         }
       }
     }

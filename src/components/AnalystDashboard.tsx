@@ -75,11 +75,11 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
 
     try {
       console.log('✅ Classificando candidato:', selectedCandidate.registration_number);
-      
+
       const { googleSheetsService } = await import('../services/googleSheets');
       const result = await googleSheetsService.updateCandidateStatus(
         selectedCandidate.registration_number,
-        'classificada', // CORREÇÃO: minúsculo
+        'Classificado',
         {
           analystEmail: user.email
         }
@@ -112,11 +112,13 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
 
     try {
       console.log('❌ Desclassificando candidato:', selectedCandidate.registration_number);
-      
+      console.log('🔍 Motivo selecionado (ID):', reasonId);
+      console.log('🔍 Observações:', notes);
+
       const { googleSheetsService } = await import('../services/googleSheets');
       const result = await googleSheetsService.updateCandidateStatus(
         selectedCandidate.registration_number,
-        'desclassificada', // CORREÇÃO: minúsculo
+        'Desclassificado',
         {
           reasonId,
           notes,
@@ -150,11 +152,11 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
 
     try {
       console.log('🔍 Marcando para revisão:', selectedCandidate.registration_number);
-      
+
       const { googleSheetsService } = await import('../services/googleSheets');
       const result = await googleSheetsService.updateCandidateStatus(
         selectedCandidate.registration_number,
-        'revisar', // Já está correto
+        'Revisar',
         {
           analystEmail: user.email
         }
