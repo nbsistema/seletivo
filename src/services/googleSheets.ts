@@ -202,5 +202,55 @@ export const googleSheetsService = {
       console.error('Erro ao buscar templates de mensagens:', error);
       return { success: false, error: 'Erro ao buscar templates de mensagens' };
     }
+  },
+
+  async sendMessages(
+    messageType: 'email' | 'sms',
+    subject: string,
+    content: string,
+    candidateIds: string,
+    sentBy: string
+  ): Promise<GoogleSheetsResponse> {
+    try {
+      console.log('📤 Enviando requisição para Google Apps Script');
+      console.log('  Tipo:', messageType);
+      console.log('  IDs:', candidateIds);
+
+      const payload = {
+        action: 'sendMessages',
+        messageType,
+        subject,
+        content,
+        candidateIds,
+        sentBy
+      };
+
+      const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      console.log('📡 Response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('📦 Resposta recebida:', data);
+
+      return data;
+    } catch (error) {
+      console.error('❌ Erro ao enviar mensagens:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro ao enviar mensagens'
+      };
+    }
   }
 };
