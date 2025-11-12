@@ -216,23 +216,24 @@ export const googleSheetsService = {
       console.log('  Tipo:', messageType);
       console.log('  IDs:', candidateIds);
 
-      const payload = {
+      const params = new URLSearchParams({
         action: 'sendMessages',
         messageType,
-        subject,
+        subject: subject || '',
         content,
         candidateIds,
         sentBy
-      };
+      });
 
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
+      const url = `${SCRIPT_URL}?${params.toString()}`;
+      console.log('🔗 URL:', url.substring(0, 100) + '...');
+
+      const response = await fetch(url, {
+        method: 'GET',
         mode: 'cors',
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json'
-        },
-        body: JSON.stringify(payload)
+        }
       });
 
       console.log('📡 Response status:', response.status);
