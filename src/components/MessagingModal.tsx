@@ -111,71 +111,43 @@ export default function MessagingModal({
 
     try {
       setLoading(true);
-      const { messagingService } = await import('../services/messagingService');
+      const { googleSheetsService } = await import('../services/googleSheets');
 
-      let successCount = 0;
-      let failCount = 0;
-      const errors: string[] = [];
+      // Coletar IDs dos candidatos
+      const candidateIds = candidates.map(c => c.id).join(',');
 
-      for (const candidate of candidates) {
-        const recipient = messageType === 'email' ? candidate.email : candidate.telefone;
+      console.log('📤 Enviando mensagens via Google Apps Script...');
+      console.log('  Tipo:', messageType);
+      console.log('  Candidatos:', candidates.length);
 
-        if (!recipient) {
-          console.warn(`Candidato ${candidate.nome_completo || candidate.full_name} não tem ${messageType} cadastrado`);
-          failCount++;
-          errors.push(`${candidate.nome_completo || candidate.full_name}: ${messageType} não cadastrado`);
-          continue;
-        }
+      const result = await googleSheetsService.sendMessages(
+        messageType,
+        subject,
+        content,
+        candidateIds,
+        user?.email || 'admin'
+      );
 
-        const personalizedContent = personalizeMessage(content, candidate);
-
-        try {
-          if (messageType === 'email') {
-            const personalizedSubject = personalizeMessage(subject, candidate);
-            const result = await messagingService.sendEmail({
-              to: recipient,
-              subject: personalizedSubject,
-              content: personalizedContent,
-              candidateId: candidate.id,
-              sentBy: user?.email || 'admin',
-            });
-
-            if (result.success) {
-              successCount++;
-              console.log(`✅ Email enviado para ${candidate.nome_completo || candidate.full_name}`);
-            } else {
-              failCount++;
-              errors.push(`${candidate.nome_completo || candidate.full_name}: ${result.error}`);
-              console.error(`❌ Erro ao enviar email para ${candidate.nome_completo || candidate.full_name}:`, result.error);
-            }
-          } else {
-            const result = await messagingService.sendSMS({
-              to: recipient,
-              content: personalizedContent,
-              candidateId: candidate.id,
-              sentBy: user?.email || 'admin',
-            });
-
-            if (result.success) {
-              successCount++;
-              console.log(`✅ SMS enviado para ${candidate.nome_completo || candidate.full_name}`);
-            } else {
-              failCount++;
-              errors.push(`${candidate.nome_completo || candidate.full_name}: ${result.error}`);
-              console.error(`❌ Erro ao enviar SMS para ${candidate.nome_completo || candidate.full_name}:`, result.error);
-            }
-          }
-        } catch (error) {
-          failCount++;
-          const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
-          errors.push(`${candidate.nome_completo || candidate.full_name}: ${errorMsg}`);
-          console.error(`❌ Erro ao processar ${candidate.nome_completo || candidate.full_name}:`, error);
-        }
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao enviar mensagens');
       }
 
+      const data = result.data;
+      const successCount = data.successCount || 0;
+      const failCount = data.failCount || 0;
+      const results = data.results || [];
+
+      console.log('✅ Sucesso:', successCount);
+      console.log('❌ Falhas:', failCount);
+
       let message = `${successCount} mensagem(ns) enviada(s) com sucesso`;
+
       if (failCount > 0) {
-        message += `\n${failCount} falha(s):\n${errors.join('\n')}`;
+        const errors = results
+          .filter((r: any) => !r.success)
+          .map((r: any) => `${r.candidateName}: ${r.error}`)
+          .join('\n');
+        message += `\n\n${failCount} falha(s):\n${errors}`;
       }
 
       alert(message);
@@ -185,8 +157,8 @@ export default function MessagingModal({
         handleClose();
       }
     } catch (error) {
-      console.error('Erro ao enviar mensagens:', error);
-      alert('Erro ao enviar mensagens. Verifique o console para mais detalhes.');
+      console.error('❌ Erro ao enviar mensagens:', error);
+      alert(`Erro ao enviar mensagens: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
     }
