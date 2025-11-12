@@ -111,36 +111,79 @@ export default function MessagingModal({
 
     try {
       setLoading(true);
+      const { messagingService } = await import('../services/messagingService');
+
+      let successCount = 0;
+      let failCount = 0;
+      const errors: string[] = [];
 
       for (const candidate of candidates) {
         const recipient = messageType === 'email' ? candidate.email : candidate.telefone;
 
         if (!recipient) {
           console.warn(`Candidato ${candidate.nome_completo || candidate.full_name} não tem ${messageType} cadastrado`);
+          failCount++;
+          errors.push(`${candidate.nome_completo || candidate.full_name}: ${messageType} não cadastrado`);
           continue;
         }
 
         const personalizedContent = personalizeMessage(content, candidate);
-        const personalizedSubject = messageType === 'email' ? personalizeMessage(subject, candidate) : null;
 
-        const { googleSheetsService } = await import('../services/googleSheets');
-        const result = await googleSheetsService.logMessage(
-          candidate.id,
-          messageType,
-          recipient,
-          personalizedSubject,
-          personalizedContent,
-          user?.email || 'admin'
-        );
+        try {
+          if (messageType === 'email') {
+            const personalizedSubject = personalizeMessage(subject, candidate);
+            const result = await messagingService.sendEmail({
+              to: recipient,
+              subject: personalizedSubject,
+              content: personalizedContent,
+              candidateId: candidate.id,
+              sentBy: user?.email || 'admin',
+            });
 
-        if (!result.success) {
-          console.warn(`Erro ao registrar mensagem para ${candidate.nome_completo || candidate.full_name}: ${result.error}`);
+            if (result.success) {
+              successCount++;
+              console.log(`✅ Email enviado para ${candidate.nome_completo || candidate.full_name}`);
+            } else {
+              failCount++;
+              errors.push(`${candidate.nome_completo || candidate.full_name}: ${result.error}`);
+              console.error(`❌ Erro ao enviar email para ${candidate.nome_completo || candidate.full_name}:`, result.error);
+            }
+          } else {
+            const result = await messagingService.sendSMS({
+              to: recipient,
+              content: personalizedContent,
+              candidateId: candidate.id,
+              sentBy: user?.email || 'admin',
+            });
+
+            if (result.success) {
+              successCount++;
+              console.log(`✅ SMS enviado para ${candidate.nome_completo || candidate.full_name}`);
+            } else {
+              failCount++;
+              errors.push(`${candidate.nome_completo || candidate.full_name}: ${result.error}`);
+              console.error(`❌ Erro ao enviar SMS para ${candidate.nome_completo || candidate.full_name}:`, result.error);
+            }
+          }
+        } catch (error) {
+          failCount++;
+          const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+          errors.push(`${candidate.nome_completo || candidate.full_name}: ${errorMsg}`);
+          console.error(`❌ Erro ao processar ${candidate.nome_completo || candidate.full_name}:`, error);
         }
       }
 
-      alert(`Mensagens ${messageType === 'email' ? 'por email' : 'por SMS'} enviadas com sucesso!`);
-      onMessagesSent();
-      handleClose();
+      let message = `${successCount} mensagem(ns) enviada(s) com sucesso`;
+      if (failCount > 0) {
+        message += `\n${failCount} falha(s):\n${errors.join('\n')}`;
+      }
+
+      alert(message);
+
+      if (successCount > 0) {
+        onMessagesSent();
+        handleClose();
+      }
     } catch (error) {
       console.error('Erro ao enviar mensagens:', error);
       alert('Erro ao enviar mensagens. Verifique o console para mais detalhes.');
