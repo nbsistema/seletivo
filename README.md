@@ -35,9 +35,12 @@ git push
 
 | Arquivo | Descrição |
 |---------|-----------|
+| **COMECE_AQUI.md** | 🚀 Início rápido (15 min) |
 | **CONFIGURACAO_APENAS_GOOGLE_SHEETS.md** | ⭐ Guia completo |
+| **CONFIRMACAO_GOOGLE_APPS_SCRIPT.md** | ✅ Erro postData corrigido |
 | **GUIA_RAPIDO_CORRECAO.md** | Guia rápido (10 min) |
 | **SOLUCAO_DEFINITIVA_ERROS.md** | Resolver problemas |
+| **DEPLOY_NETLIFY.md** | Deploy no Netlify |
 | **MUDANCAS_SISTEMA.md** | O que mudou |
 
 ## ✅ O Que Você Precisa

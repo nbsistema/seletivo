@@ -21,6 +21,14 @@ TypeError: Failed to fetch
 at Object.sendMessages (googleSheets-gscMSQ5H.js:1:3221)
 ```
 
+### 4. Erro Cannot read properties of undefined
+```
+TypeError: Cannot read properties of undefined (reading 'postData')
+at handleRequest (Código:127:11)
+```
+**Causa:** Script sendo executado manualmente sem requisição HTTP
+**Solução:** Script foi corrigido para verificar se `e` existe antes de acessar propriedades
+
 ---
 
 ## 🎯 Causa Raiz dos Problemas
@@ -33,6 +41,9 @@ O Apps Script precisa retornar os headers CORS corretos
 
 ### Problema 3: Implantação Não Como "Qualquer Pessoa"
 Se a implantação não permite acesso público, haverá erro de CORS
+
+### Problema 4: Execução Manual do Script
+Quando o script é executado manualmente (sem requisição HTTP), o objeto `e` é undefined
 
 ---
 

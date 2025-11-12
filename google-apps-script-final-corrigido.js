@@ -124,7 +124,7 @@ function handleRequest(e) {
   try {
     let action, params;
 
-    if (e.postData) {
+    if (e && e.postData && e.postData.contents) {
       try {
         const data = JSON.parse(e.postData.contents);
         action = data.action;
@@ -136,9 +136,14 @@ function handleRequest(e) {
           error: 'JSON inválido: ' + parseError.toString()
         });
       }
-    } else {
+    } else if (e && e.parameter) {
       action = e.parameter.action;
       params = e.parameter;
+    } else {
+      return createCorsResponse({
+        success: false,
+        error: 'Requisição inválida: parâmetros não encontrados'
+      });
     }
 
     Logger.log('🔄 Ação recebida: ' + action);
