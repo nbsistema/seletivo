@@ -82,20 +82,22 @@ class GoogleSheetsService {
 
       if (!result) {
         console.error('❌ getUserByEmail - Resultado nulo');
-        return null;
+        throw new Error('Erro ao buscar usuário: resposta vazia do servidor');
       }
 
-      if (result.error) {
-        console.error('❌ getUserByEmail - Erro:', result.error);
-        return null;
+      // Verificar se o Google Apps Script retornou sucesso
+      if (result.success === false) {
+        const errorMsg = result.error || 'Usuário não encontrado';
+        console.error('❌ getUserByEmail - Erro do servidor:', errorMsg);
+        throw new Error(errorMsg);
       }
 
       // Google Apps Script retorna { success: true, data: {...} }
       const userData = result.data || result;
 
       if (!userData || !userData.email) {
-        console.error('❌ getUserByEmail - Dados de usuário inválidos');
-        return null;
+        console.error('❌ getUserByEmail - Dados de usuário inválidos:', userData);
+        throw new Error('Usuário não encontrado');
       }
 
       console.log('📦 getUserByEmail - Dados extraídos:', JSON.stringify(userData, null, 2));
@@ -115,7 +117,7 @@ class GoogleSheetsService {
       return user;
     } catch (error) {
       console.error('❌ getUserByEmail - Exceção:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -129,8 +131,9 @@ class GoogleSheetsService {
         return null;
       }
 
-      if (result.error) {
-        console.error('❌ getUserById - Erro:', result.error);
+      // Verificar se o Google Apps Script retornou sucesso
+      if (result.success === false) {
+        console.error('❌ getUserById - Erro do servidor:', result.error);
         return null;
       }
 
@@ -220,9 +223,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Email é obrigatório');
       }
 
-      console.log('🔐 LOGIN - Email:', email);
-      const userData = await sheetsService.getUserByEmail(email.toLowerCase().trim());
-      console.log('👤 LOGIN - Dados recebidos:', JSON.stringify(userData, null, 2));
+      console.log('🔐 LOGIN - Iniciando login para:', email);
+
+      let userData: User | null = null;
+      try {
+        userData = await sheetsService.getUserByEmail(email.toLowerCase().trim());
+        console.log('👤 LOGIN - Dados recebidos:', JSON.stringify(userData, null, 2));
+      } catch (getUserError: any) {
+        console.error('❌ LOGIN - Erro ao buscar usuário:', getUserError);
+        throw getUserError;
+      }
 
       if (!userData) {
         throw new Error('Usuário não encontrado');
