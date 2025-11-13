@@ -3,6 +3,10 @@ import { CheckCircle, Mail, MessageSquare, Loader2, Send, Calendar } from 'lucid
 import MessagingModal from './MessagingModal';
 import type { Candidate } from '../types/candidate';
 
+function isMessageSent(value: any): boolean {
+  return value === true || value === 'Sim' || value === 'TRUE' || value === 'true';
+}
+
 export default function ClassifiedCandidatesList() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
@@ -85,7 +89,25 @@ export default function ClassifiedCandidatesList() {
 
   async function handleMoveToInterview() {
     const selected = getSelectedCandidatesData();
-    const withMessages = selected.filter(c => c.email_sent || c.sms_sent);
+
+    console.log('🔍 Candidatos selecionados:', selected);
+    console.log('🔍 Verificando status de mensagens...');
+    selected.forEach(c => {
+      console.log(`  - ${c.NOMECOMPLETO}:`, {
+        email_sent: c.email_sent,
+        email_sent_type: typeof c.email_sent,
+        sms_sent: c.sms_sent,
+        sms_sent_type: typeof c.sms_sent
+      });
+    });
+
+    const withMessages = selected.filter(c => {
+      const hasEmail = isMessageSent(c.email_sent);
+      const hasSms = isMessageSent(c.sms_sent);
+      return hasEmail || hasSms;
+    });
+
+    console.log('✅ Candidatos com mensagens:', withMessages.length);
 
     if (withMessages.length === 0) {
       alert('Selecione apenas candidatos que já receberam email ou SMS');
@@ -263,19 +285,19 @@ export default function ClassifiedCandidatesList() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      {candidate.email_sent && (
+                      {isMessageSent(candidate.email_sent) && (
                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
                           <Mail className="w-3 h-3" />
                           Email enviado
                         </span>
                       )}
-                      {candidate.sms_sent && (
+                      {isMessageSent(candidate.sms_sent) && (
                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
                           <MessageSquare className="w-3 h-3" />
                           SMS enviado
                         </span>
                       )}
-                      {!candidate.email_sent && !candidate.sms_sent && (
+                      {!isMessageSent(candidate.email_sent) && !isMessageSent(candidate.sms_sent) && (
                         <span className="text-xs text-gray-400">Nenhuma mensagem enviada</span>
                       )}
                     </div>
@@ -294,6 +316,7 @@ export default function ClassifiedCandidatesList() {
         onMessagesSent={() => {
           setSelectedCandidates(new Set());
           setShowMessagingModal(false);
+          loadClassifiedCandidates();
         }}
       />
     </div>
