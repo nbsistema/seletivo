@@ -163,6 +163,7 @@ function handleRequest(e) {
       'moveToInterview': () => moveToInterview(params),
       'getInterviewCandidates': () => getInterviewCandidates(params),
       'getInterviewers': () => getInterviewers(params),
+      'getInterviewerCandidates': () => getInterviewerCandidates(params),
       'allocateToInterviewer': () => allocateToInterviewer(params),
       'updateInterviewStatus': () => updateInterviewStatus(params),
       'saveInterviewEvaluation': () => saveInterviewEvaluation(params),
@@ -1126,6 +1127,59 @@ function getInterviewers(params) {
     return interviewers;
   } catch (error) {
     Logger.log('❌ Erro em getInterviewers: ' + error.toString());
+    throw error;
+  }
+}
+
+function getInterviewerCandidates(params) {
+  try {
+    const interviewerEmail = params.interviewerEmail;
+
+    if (!interviewerEmail) {
+      throw new Error('Email do entrevistador é obrigatório');
+    }
+
+    Logger.log('🔍 Buscando candidatos do entrevistador: ' + interviewerEmail);
+
+    const {sheet, headers, values} = _readSheetBlock_(SHEET_CANDIDATOS);
+    if (!sheet || !values.length) {
+      Logger.log('⚠️ Nenhum candidato encontrado na planilha');
+      return [];
+    }
+
+    const col = _colMap_(headers);
+    const statusEntrevistaCol = col['status_entrevista'];
+    const entrevistadorCol = col['entrevistador'];
+    const cpfCol = col['CPF'];
+    const regNumCol = col['Número de Inscrição'];
+
+    if (entrevistadorCol === undefined || entrevistadorCol < 0) {
+      Logger.log('⚠️ Coluna entrevistador não encontrada');
+      return [];
+    }
+
+    const candidates = [];
+    for (let i = 0; i < values.length; i++) {
+      const candidateInterviewer = values[i][entrevistadorCol];
+      const normalizedInterviewer = candidateInterviewer ? String(candidateInterviewer).toLowerCase().trim() : '';
+      const normalizedEmail = interviewerEmail.toLowerCase().trim();
+
+      if (normalizedInterviewer === normalizedEmail) {
+        const candidate = {};
+        headers.forEach((header, index) => {
+          candidate[header] = values[i][index];
+        });
+        candidate.id = values[i][cpfCol] || values[i][regNumCol];
+        candidate.registration_number = values[i][regNumCol] || values[i][cpfCol];
+
+        candidates.push(candidate);
+      }
+    }
+
+    Logger.log('✅ Candidatos encontrados para ' + interviewerEmail + ': ' + candidates.length);
+    return candidates;
+  } catch (error) {
+    Logger.log('❌ Erro em getInterviewerCandidates: ' + error.toString());
     throw error;
   }
 }
