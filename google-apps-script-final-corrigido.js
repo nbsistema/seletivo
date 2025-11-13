@@ -159,6 +159,7 @@ function handleRequest(e) {
       'getDisqualificationReasons': () => getDisqualificationReasons(),
       'getMessageTemplates': () => getMessageTemplates(params),
       'sendMessages': () => sendMessages(params),
+      'updateMessageStatus': () => updateMessageStatus(params),
       'moveToInterview': () => moveToInterview(params),
       'getInterviewCandidates': () => getInterviewCandidates(params),
       'getInterviewers': () => getInterviewers(params),
@@ -860,6 +861,77 @@ function _updateMessageStatusInCandidates_(cpf, messageType) {
 
   } catch (error) {
     Logger.log('❌ Erro ao atualizar status de mensagem: ' + error.toString());
+  }
+}
+
+function updateMessageStatus(params) {
+  try {
+    Logger.log('📝 updateMessageStatus iniciado');
+
+    const registrationNumber = params.registrationNumber;
+    const messageType = params.messageType;
+
+    if (!registrationNumber) {
+      throw new Error('Número de inscrição é obrigatório');
+    }
+
+    if (!messageType || (messageType !== 'email' && messageType !== 'sms')) {
+      throw new Error('Tipo de mensagem inválido. Use "email" ou "sms"');
+    }
+
+    const sh = _sheet(SHEET_CANDIDATOS);
+    if (!sh) {
+      throw new Error('Planilha de candidatos não encontrada');
+    }
+
+    const headers = _getHeaders_(sh);
+    const col = _colMap_(headers);
+    const cpfCol = col['CPF'];
+    const regNumCol = col['Número de Inscrição'];
+
+    let targetCol;
+    if (messageType === 'email') {
+      targetCol = col['EMAIL_SENT'];
+    } else if (messageType === 'sms') {
+      targetCol = col['SMS_SENT'];
+    }
+
+    if (targetCol === undefined || targetCol < 0) {
+      const colName = messageType === 'email' ? 'EMAIL_SENT' : 'SMS_SENT';
+      throw new Error('Coluna ' + colName + ' não encontrada. Execute addStatusColumnIfNotExists primeiro.');
+    }
+
+    const idx = _getIndex_(sh, headers);
+    const searchKey = String(registrationNumber).trim();
+    let row = idx[searchKey];
+
+    if (!row) {
+      const newIdx = _buildIndex_(sh, headers);
+      const rev = _getRev_();
+      CacheService.getDocumentCache().put(`${IDX_CACHE_KEY}${rev}`, JSON.stringify(newIdx), CACHE_TTL_SEC);
+      row = newIdx[searchKey];
+    }
+
+    if (!row) {
+      throw new Error('Candidato não encontrado: ' + registrationNumber);
+    }
+
+    sh.getRange(row, targetCol + 1).setValue('Sim');
+    _bumpRev_();
+
+    Logger.log('✅ Status de mensagem atualizado: ' + registrationNumber + ' - ' + messageType + ' = Sim');
+
+    return {
+      success: true,
+      message: 'Status de mensagem atualizado com sucesso',
+      registrationNumber: registrationNumber,
+      messageType: messageType,
+      status: 'Sim'
+    };
+
+  } catch (error) {
+    Logger.log('❌ Erro em updateMessageStatus: ' + error.toString());
+    throw error;
   }
 }
 

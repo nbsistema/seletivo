@@ -255,6 +255,37 @@ export const googleSheetsService = {
     }
   },
 
+  async updateMessageStatus(
+    registrationNumber: string,
+    messageType: 'email' | 'sms'
+  ): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'updateMessageStatus',
+        registrationNumber,
+        messageType
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao atualizar status de mensagem:', error);
+      return { success: false, error: 'Erro ao atualizar status de mensagem' };
+    }
+  },
+
   async moveToInterview(candidateIds: string): Promise<GoogleSheetsResponse> {
     try {
       const params = new URLSearchParams({
