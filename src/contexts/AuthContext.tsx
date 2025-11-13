@@ -16,7 +16,6 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAdmin: () => boolean;
   isAnalyst: () => boolean;
-  isInterviewer: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -76,30 +75,12 @@ class GoogleSheetsService {
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
-    try {
-      const result = await this.fetchData('getUserRole', { email });
-      console.log('📥 getUserByEmail - Resultado COMPLETO:', JSON.stringify(result, null, 2));
+    const result = await this.fetchData('getUserRole', { email });
+    console.log('📥 getUserByEmail - Resultado COMPLETO:', JSON.stringify(result, null, 2));
 
-      if (!result) {
-        console.error('❌ getUserByEmail - Resultado nulo');
-        throw new Error('Erro ao buscar usuário: resposta vazia do servidor');
-      }
-
-      // Verificar se o Google Apps Script retornou sucesso
-      if (result.success === false) {
-        const errorMsg = result.error || 'Usuário não encontrado';
-        console.error('❌ getUserByEmail - Erro do servidor:', errorMsg);
-        throw new Error(errorMsg);
-      }
-
+    if (result && !result.error) {
       // Google Apps Script retorna { success: true, data: {...} }
       const userData = result.data || result;
-
-      if (!userData || !userData.email) {
-        console.error('❌ getUserByEmail - Dados de usuário inválidos:', userData);
-        throw new Error('Usuário não encontrado');
-      }
-
       console.log('📦 getUserByEmail - Dados extraídos:', JSON.stringify(userData, null, 2));
 
       const user = {
@@ -107,7 +88,7 @@ class GoogleSheetsService {
         email: userData.email,
         name: userData.name || userData.nome || userData.email,
         role: userData.role,
-        active: userData.active !== false && userData.active !== 'false',
+        active: true,
         password: ''
       };
 
@@ -115,36 +96,19 @@ class GoogleSheetsService {
       console.log('🎭 getUserByEmail - ROLE:', user.role, '(tipo:', typeof user.role, ')');
 
       return user;
-    } catch (error) {
-      console.error('❌ getUserByEmail - Exceção:', error);
-      throw error;
     }
+
+    console.error('❌ getUserByEmail - Sem resultado válido');
+    return null;
   }
 
   async getUserById(id: string): Promise<User | null> {
-    try {
-      const result = await this.fetchData('getUserRole', { email: id });
-      console.log('📥 getUserById - Resultado COMPLETO:', JSON.stringify(result, null, 2));
+    const result = await this.fetchData('getUserRole', { email: id });
+    console.log('📥 getUserById - Resultado COMPLETO:', JSON.stringify(result, null, 2));
 
-      if (!result) {
-        console.error('❌ getUserById - Resultado nulo');
-        return null;
-      }
-
-      // Verificar se o Google Apps Script retornou sucesso
-      if (result.success === false) {
-        console.error('❌ getUserById - Erro do servidor:', result.error);
-        return null;
-      }
-
+    if (result && !result.error) {
       // Google Apps Script retorna { success: true, data: {...} }
       const userData = result.data || result;
-
-      if (!userData || !userData.email) {
-        console.error('❌ getUserById - Dados de usuário inválidos');
-        return null;
-      }
-
       console.log('📦 getUserById - Dados extraídos:', JSON.stringify(userData, null, 2));
 
       const user = {
@@ -152,17 +116,17 @@ class GoogleSheetsService {
         email: userData.email,
         name: userData.name || userData.nome || userData.email,
         role: userData.role,
-        active: userData.active !== false && userData.active !== 'false'
+        active: true
       };
 
       console.log('✅ getUserById - User FINAL:', JSON.stringify(user, null, 2));
       console.log('🎭 getUserById - ROLE:', user.role, '(tipo:', typeof user.role, ')');
 
       return user;
-    } catch (error) {
-      console.error('❌ getUserById - Exceção:', error);
-      return null;
     }
+
+    console.error('❌ getUserById - Sem resultado válido');
+    return null;
   }
 }
 
@@ -182,24 +146,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       const storedUser = localStorage.getItem('currentUser');
-
+      
       if (storedUser) {
-        try {
-          const userData: User = JSON.parse(storedUser);
-
-          // Verificar se o usuário ainda existe/está ativo
-          const freshUser = await sheetsService.getUserById(userData.id);
-
-          if (freshUser && freshUser.active) {
-            setUser(freshUser);
-          } else {
-            // Usuário não existe mais ou está inativo
-            console.warn('⚠️ Usuário armazenado não é mais válido, limpando sessão');
-            localStorage.removeItem('currentUser');
-            setUser(null);
-          }
-        } catch (parseError) {
-          console.error('Erro ao fazer parse do usuário armazenado:', parseError);
+        const userData: User = JSON.parse(storedUser);
+        
+        // Verificar se o usuário ainda existe/está ativo
+        const freshUser = await sheetsService.getUserById(userData.id);
+        
+        if (freshUser && freshUser.active) {
+          setUser(freshUser);
+        } else {
+          // Usuário não existe mais ou está inativo
           localStorage.removeItem('currentUser');
           setUser(null);
         }
@@ -219,20 +176,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
 
-      if (!email || !email.trim()) {
-        throw new Error('Email é obrigatório');
-      }
-
-      console.log('🔐 LOGIN - Iniciando login para:', email);
-
-      let userData: User | null = null;
-      try {
-        userData = await sheetsService.getUserByEmail(email.toLowerCase().trim());
-        console.log('👤 LOGIN - Dados recebidos:', JSON.stringify(userData, null, 2));
-      } catch (getUserError: any) {
-        console.error('❌ LOGIN - Erro ao buscar usuário:', getUserError);
-        throw getUserError;
-      }
+      console.log('🔐 LOGIN - Email:', email);
+      const userData = await sheetsService.getUserByEmail(email.toLowerCase().trim());
+      console.log('👤 LOGIN - Dados recebidos:', JSON.stringify(userData, null, 2));
 
       if (!userData) {
         throw new Error('Usuário não encontrado');
@@ -240,10 +186,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!userData.active) {
         throw new Error('Usuário inativo');
-      }
-
-      if (!userData.role) {
-        throw new Error('Usuário sem perfil de acesso definido');
       }
 
       const userWithoutPassword: User = {
@@ -258,15 +200,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('🎭 LOGIN - ROLE a ser salvo:', userWithoutPassword.role);
       console.log('🔍 LOGIN - role === "admin":', userWithoutPassword.role === 'admin');
       console.log('🔍 LOGIN - role === "analista":', userWithoutPassword.role === 'analista');
-      console.log('🔍 LOGIN - role === "entrevistador":', userWithoutPassword.role === 'entrevistador');
+	  console.log('🔍 LOGIN - role === "entrevistador":', userWithoutPassword.role === 'entrevistador');
 
       setUser(userWithoutPassword);
       localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
 
     } catch (error) {
       console.error('Erro no login:', error);
-      setUser(null);
-      localStorage.removeItem('currentUser');
       throw error;
     } finally {
       setLoading(false);
@@ -292,13 +232,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function isAnalyst(): boolean {
     return user?.role === 'analista';
   }
-
-  function isInterviewer(): boolean {
+  
+   function isAnalyst(): boolean {
     return user?.role === 'entrevistador';
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isAnalyst, isInterviewer }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isAnalyst }}>
       {children}
     </AuthContext.Provider>
   );
@@ -311,3 +251,4 @@ export function useAuth() {
   }
   return context;
 }
+
