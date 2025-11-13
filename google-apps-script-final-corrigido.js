@@ -159,8 +159,10 @@ function handleRequest(e) {
       'getDisqualificationReasons': () => getDisqualificationReasons(),
       'getMessageTemplates': () => getMessageTemplates(params),
       'sendMessages': () => sendMessages(params),
+      'moveToInterview': () => moveToInterview(params),
       'getInterviewCandidates': () => getInterviewCandidates(params),
       'getInterviewers': () => getInterviewers(params),
+      'allocateToInterviewer': () => allocateToInterviewer(params),
       'updateInterviewStatus': () => updateInterviewStatus(params),
       'saveInterviewEvaluation': () => saveInterviewEvaluation(params),
       'test': () => testConnection()
@@ -954,6 +956,79 @@ function getInterviewCandidates(params) {
   }
 }
 
+function moveToInterview(params) {
+  try {
+    const sh = _sheet(SHEET_CANDIDATOS);
+    const headers = _getHeaders_(sh);
+    const col = _colMap_(headers);
+
+    const statusEntrevistaCol = col['status_entrevista'];
+    const cpfCol = col['CPF'];
+    const emailSentCol = col['EMAIL_SENT'];
+    const smsSentCol = col['SMS_SENT'];
+
+    if (statusEntrevistaCol === undefined || statusEntrevistaCol < 0) {
+      throw new Error('Coluna status_entrevista não encontrada');
+    }
+
+    const candidateIds = String(params.candidateIds || '').split(',').map(s => s.trim()).filter(Boolean);
+    Logger.log('📋 Movendo ' + candidateIds.length + ' candidatos para entrevista');
+
+    const lastRow = sh.getLastRow();
+    if (lastRow <= HEADER_ROWS) {
+      return { success: true, movedCount: 0, message: 'Nenhum candidato para mover' };
+    }
+
+    const n = lastRow - HEADER_ROWS;
+    const cpfs = sh.getRange(HEADER_ROWS + 1, cpfCol + 1, n, 1).getValues().map(r => String(r[0]).trim());
+    const statusEntrevista = sh.getRange(HEADER_ROWS + 1, statusEntrevistaCol + 1, n, 1).getValues();
+
+    const emailSent = emailSentCol >= 0 ? sh.getRange(HEADER_ROWS + 1, emailSentCol + 1, n, 1).getValues() : null;
+    const smsSent = smsSentCol >= 0 ? sh.getRange(HEADER_ROWS + 1, smsSentCol + 1, n, 1).getValues() : null;
+
+    let movedCount = 0;
+    const pos = new Map();
+    for (let i = 0; i < cpfs.length; i++) {
+      pos.set(cpfs[i], i);
+    }
+
+    for (const cpf of candidateIds) {
+      const i = pos.get(cpf);
+      if (i === undefined) {
+        Logger.log('⚠️ CPF não encontrado: ' + cpf);
+        continue;
+      }
+
+      const hasEmail = emailSent && (emailSent[i][0] === 'Sim' || emailSent[i][0] === true || emailSent[i][0] === 'TRUE');
+      const hasSms = smsSent && (smsSent[i][0] === 'Sim' || smsSent[i][0] === true || smsSent[i][0] === 'TRUE');
+
+      if (!hasEmail && !hasSms) {
+        Logger.log('⚠️ Candidato ' + cpf + ' não recebeu mensagens. Pulando.');
+        continue;
+      }
+
+      statusEntrevista[i][0] = 'Aguardando';
+      movedCount++;
+      Logger.log('✅ ' + cpf + ' movido para entrevista');
+    }
+
+    if (movedCount > 0) {
+      sh.getRange(HEADER_ROWS + 1, statusEntrevistaCol + 1, n, 1).setValues(statusEntrevista);
+      _bumpRev_();
+    }
+
+    Logger.log('✅ Total movidos: ' + movedCount);
+    return {
+      success: true,
+      movedCount: movedCount,
+      message: movedCount + ' candidato(s) movido(s) para entrevista'
+    };
+  } catch (error) {
+    Logger.log('❌ Erro em moveToInterview: ' + error.toString());
+    throw error;
+  }
+}
+
 function getInterviewers(params) {
   try {
     const sheet = initUsuariosSheet();
@@ -979,6 +1054,71 @@ function getInterviewers(params) {
     return interviewers;
   } catch (error) {
     Logger.log('❌ Erro em getInterviewers: ' + error.toString());
+    throw error;
+  }
+}
+
+function allocateToInterviewer(params) {
+  try {
+    const sh = _sheet(SHEET_CANDIDATOS);
+    const headers = _getHeaders_(sh);
+    const col = _colMap_(headers);
+
+    const entrevistadorCol = col['entrevistador'];
+    const dataEntrevistaCol = col['data_entrevista'];
+    const cpfCol = col['CPF'];
+
+    if (entrevistadorCol === undefined || entrevistadorCol < 0) {
+      throw new Error('Coluna entrevistador não encontrada');
+    }
+
+    const candidateIds = String(params.candidateIds || '').split(',').map(s => s.trim()).filter(Boolean);
+    const interviewerEmail = params.interviewerEmail;
+
+    Logger.log('📋 Alocando ' + candidateIds.length + ' candidatos para ' + interviewerEmail);
+
+    const lastRow = sh.getLastRow();
+    if (lastRow <= HEADER_ROWS) {
+      return { success: true, allocatedCount: 0, message: 'Nenhum candidato para alocar' };
+    }
+
+    const n = lastRow - HEADER_ROWS;
+    const cpfs = sh.getRange(HEADER_ROWS + 1, cpfCol + 1, n, 1).getValues().map(r => String(r[0]).trim());
+    const entrevistador = sh.getRange(HEADER_ROWS + 1, entrevistadorCol + 1, n, 1).getValues();
+    const dataEntrevista = dataEntrevistaCol >= 0 ? sh.getRange(HEADER_ROWS + 1, dataEntrevistaCol + 1, n, 1).getValues() : null;
+
+    const stamp = getCurrentTimestamp();
+    let allocatedCount = 0;
+    const pos = new Map();
+    for (let i = 0; i < cpfs.length; i++) {
+      pos.set(cpfs[i], i);
+    }
+
+    for (const cpf of candidateIds) {
+      const i = pos.get(cpf);
+      if (i === undefined) continue;
+
+      entrevistador[i][0] = interviewerEmail;
+      if (dataEntrevista) dataEntrevista[i][0] = stamp;
+      allocatedCount++;
+    }
+
+    if (allocatedCount > 0) {
+      sh.getRange(HEADER_ROWS + 1, entrevistadorCol + 1, n, 1).setValues(entrevistador);
+      if (dataEntrevista && dataEntrevistaCol >= 0) {
+        sh.getRange(HEADER_ROWS + 1, dataEntrevistaCol + 1, n, 1).setValues(dataEntrevista);
+      }
+      _bumpRev_();
+    }
+
+    Logger.log('✅ Total alocados: ' + allocatedCount);
+    return {
+      success: true,
+      allocatedCount: allocatedCount,
+      message: allocatedCount + ' candidato(s) alocado(s) para entrevista'
+    };
+  } catch (error) {
+    Logger.log('❌ Erro em allocateToInterviewer: ' + error.toString());
     throw error;
   }
 }
