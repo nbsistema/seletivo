@@ -163,9 +163,17 @@ function handleRequest(e) {
     };
 
     if (actions[action]) {
-      const result = actions[action]();
-      Logger.log('✅ Resultado: ' + JSON.stringify(result).substring(0, 200));
-      return createCorsResponse({ success: true, data: result });
+      try {
+        const result = actions[action]();
+        Logger.log('✅ Resultado: ' + JSON.stringify(result).substring(0, 200));
+        return createCorsResponse({ success: true, data: result });
+      } catch (actionError) {
+        Logger.log('❌ Erro ao executar ação ' + action + ': ' + actionError.toString());
+        return createCorsResponse({
+          success: false,
+          error: actionError.message || actionError.toString()
+        });
+      }
     } else {
       Logger.log('❌ Ação não encontrada: ' + action);
       return createCorsResponse({
@@ -214,24 +222,41 @@ function initUsuariosSheet() {
 }
 
 function getUserRole(params) {
-  const sheet = initUsuariosSheet();
-  const data = sheet.getDataRange().getValues();
-  const emailToFind = params.email ? params.email.toLowerCase().trim() : '';
+  try {
+    const sheet = initUsuariosSheet();
+    const data = sheet.getDataRange().getValues();
+    const emailToFind = params.email ? params.email.toLowerCase().trim() : '';
 
-  for (let i = 1; i < data.length; i++) {
-    const emailInSheet = data[i][0] ? data[i][0].toLowerCase().trim() : '';
-    if (emailInSheet === emailToFind) {
-      const rawRole = data[i][2];
-      const normalizedRole = rawRole ? String(rawRole).toLowerCase().trim() : '';
-      return {
-        email: data[i][0],
-        name: data[i][1] || data[i][0],
-        role: normalizedRole,
-        id: data[i][3] || data[i][0]
-      };
+    if (!emailToFind) {
+      throw new Error('Email é obrigatório');
     }
+
+    Logger.log('🔍 Procurando usuário: ' + emailToFind);
+
+    for (let i = 1; i < data.length; i++) {
+      const emailInSheet = data[i][0] ? data[i][0].toLowerCase().trim() : '';
+      if (emailInSheet === emailToFind) {
+        const rawRole = data[i][2];
+        const normalizedRole = rawRole ? String(rawRole).toLowerCase().trim() : '';
+
+        Logger.log('✅ Usuário encontrado: ' + emailInSheet + ' | Role: ' + normalizedRole);
+
+        return {
+          email: data[i][0],
+          name: data[i][1] || data[i][0],
+          role: normalizedRole,
+          id: data[i][3] || data[i][0],
+          active: true
+        };
+      }
+    }
+
+    Logger.log('❌ Usuário não encontrado: ' + emailToFind);
+    throw new Error('Usuário não encontrado');
+  } catch (error) {
+    Logger.log('❌ Erro em getUserRole: ' + error.toString());
+    throw error;
   }
-  return null;
 }
 
 function getAnalysts(params) {
