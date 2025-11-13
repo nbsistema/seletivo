@@ -167,6 +167,8 @@ function handleRequest(e) {
       'allocateToInterviewer': () => allocateToInterviewer(params),
       'updateInterviewStatus': () => updateInterviewStatus(params),
       'saveInterviewEvaluation': () => saveInterviewEvaluation(params),
+      'getReportStats': () => getReportStats(params),
+      'getReport': () => getReport(params),
       'test': () => testConnection()
     };
 
@@ -1406,6 +1408,131 @@ function saveInterviewEvaluation(params) {
   } catch (error) {
     Logger.log('❌ Erro em saveInterviewEvaluation: ' + error.toString());
     Logger.log('   Stack: ' + error.stack);
+    throw error;
+  }
+}
+
+function getReportStats(params) {
+  try {
+    Logger.log('📊 Gerando estatísticas de relatórios');
+
+    const {sheet, headers, values} = _readSheetBlock_(SHEET_CANDIDATOS);
+    if (!sheet || !values.length) {
+      return {
+        classificados: 0,
+        desclassificados: 0,
+        entrevistaClassificados: 0,
+        entrevistaDesclassificados: 0
+      };
+    }
+
+    const col = _colMap_(headers);
+    const statusCol = col['Status'];
+    const statusEntrevistaCol = col['status_entrevista'];
+    const interviewResultCol = col['interview_result'];
+
+    let classificados = 0;
+    let desclassificados = 0;
+    let entrevistaClassificados = 0;
+    let entrevistaDesclassificados = 0;
+
+    for (let i = 0; i < values.length; i++) {
+      const status = values[i][statusCol] ? String(values[i][statusCol]).trim() : '';
+      const statusEntrevista = values[i][statusEntrevistaCol] ? String(values[i][statusEntrevistaCol]).trim() : '';
+      const interviewResult = values[i][interviewResultCol] ? String(values[i][interviewResultCol]).trim() : '';
+
+      if (status === 'Classificado') {
+        classificados++;
+      } else if (status === 'Desclassificado') {
+        desclassificados++;
+      }
+
+      if (statusEntrevista === 'Avaliado') {
+        if (interviewResult === 'Classificado') {
+          entrevistaClassificados++;
+        } else if (interviewResult === 'Desclassificado') {
+          entrevistaDesclassificados++;
+        }
+      }
+    }
+
+    Logger.log('✅ Estatísticas geradas');
+    Logger.log('   - Classificados: ' + classificados);
+    Logger.log('   - Desclassificados: ' + desclassificados);
+    Logger.log('   - Entrevista Classificados: ' + entrevistaClassificados);
+    Logger.log('   - Entrevista Desclassificados: ' + entrevistaDesclassificados);
+
+    return {
+      classificados: classificados,
+      desclassificados: desclassificados,
+      entrevistaClassificados: entrevistaClassificados,
+      entrevistaDesclassificados: entrevistaDesclassificados
+    };
+  } catch (error) {
+    Logger.log('❌ Erro em getReportStats: ' + error.toString());
+    throw error;
+  }
+}
+
+function getReport(params) {
+  try {
+    const reportType = params.reportType;
+    const analystEmail = params.analystEmail;
+
+    Logger.log('📋 Gerando relatório: ' + reportType);
+    if (analystEmail) {
+      Logger.log('   - Filtro por analista: ' + analystEmail);
+    }
+
+    const {sheet, headers, values} = _readSheetBlock_(SHEET_CANDIDATOS);
+    if (!sheet || !values.length) {
+      Logger.log('⚠️ Nenhum candidato encontrado');
+      return [];
+    }
+
+    const col = _colMap_(headers);
+    const statusCol = col['Status'];
+    const analistaCol = col['Analista'];
+    const statusEntrevistaCol = col['status_entrevista'];
+    const interviewResultCol = col['interview_result'];
+
+    const candidates = [];
+
+    for (let i = 0; i < values.length; i++) {
+      const status = values[i][statusCol] ? String(values[i][statusCol]).trim() : '';
+      const analista = values[i][analistaCol] ? String(values[i][analistaCol]).toLowerCase().trim() : '';
+      const statusEntrevista = values[i][statusEntrevistaCol] ? String(values[i][statusEntrevistaCol]).trim() : '';
+      const interviewResult = values[i][interviewResultCol] ? String(values[i][interviewResultCol]).trim() : '';
+
+      if (analystEmail && analista !== analystEmail.toLowerCase().trim()) {
+        continue;
+      }
+
+      let include = false;
+
+      if (reportType === 'classificados' && status === 'Classificado') {
+        include = true;
+      } else if (reportType === 'desclassificados' && status === 'Desclassificado') {
+        include = true;
+      } else if (reportType === 'entrevista_classificados' && statusEntrevista === 'Avaliado' && interviewResult === 'Classificado') {
+        include = true;
+      } else if (reportType === 'entrevista_desclassificados' && statusEntrevista === 'Avaliado' && interviewResult === 'Desclassificado') {
+        include = true;
+      }
+
+      if (include) {
+        const candidate = {};
+        headers.forEach((header, index) => {
+          candidate[header] = values[i][index];
+        });
+        candidates.push(candidate);
+      }
+    }
+
+    Logger.log('✅ Relatório gerado: ' + candidates.length + ' registros');
+    return candidates;
+  } catch (error) {
+    Logger.log('❌ Erro em getReport: ' + error.toString());
     throw error;
   }
 }

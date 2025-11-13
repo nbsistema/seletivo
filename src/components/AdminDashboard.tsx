@@ -8,13 +8,14 @@ import ClassifiedCandidatesList from './ClassifiedCandidatesList';
 import DisqualifiedCandidatesList from './DisqualifiedCandidatesList';
 import ReviewCandidatesList from './ReviewCandidatesList';
 import InterviewCandidatesList from './InterviewCandidatesList';
-import { BarChart3, Users, Upload, CheckCircle, XCircle, Eye, Calendar } from 'lucide-react';
+import ReportsPage from './ReportsPage';
+import { BarChart3, Users, Upload, CheckCircle, XCircle, Eye, Calendar, FileText } from 'lucide-react';
 
 export default function AdminDashboard() {
   console.log('🎨 AdminDashboard RENDERIZADO - Este é o painel de ADMINISTRADOR');
   const { user, logout } = useAuth();
   console.log('👤 AdminDashboard - Usuário:', user);
-  const [activeTab, setActiveTab] = useState<'allocation' | 'my-candidates' | 'import' | 'classified' | 'disqualified' | 'review' | 'interview'>('allocation');
+  const [activeTab, setActiveTab] = useState<'allocation' | 'my-candidates' | 'import' | 'classified' | 'disqualified' | 'review' | 'interview' | 'reports'>('allocation');
   const [stats, setStats] = useState({
     total: 0,
     pendente: 0,
@@ -223,6 +224,17 @@ export default function AdminDashboard() {
               <Calendar className="w-4 h-4" />
               Entrevista
             </button>
+            <button
+              onClick={() => setActiveTab('reports')}
+              className={`px-4 py-3 font-medium flex items-center gap-2 border-b-2 transition-colors ${
+                activeTab === 'reports'
+                  ? 'border-purple-600 text-purple-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Relatórios
+            </button>
           </div>
         </div>
       </div>
@@ -242,6 +254,7 @@ export default function AdminDashboard() {
         )}
         {activeTab === 'classified' && <ClassifiedCandidatesList />}
         {activeTab === 'disqualified' && <DisqualifiedCandidatesList />}
+        {activeTab === 'reports' && <ReportsPage onClose={() => setActiveTab('allocation')} />}
         {activeTab === 'review' && <ReviewCandidatesList />}
         {activeTab === 'interview' && <InterviewCandidatesList />}
       </div>

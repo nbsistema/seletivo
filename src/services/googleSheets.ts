@@ -450,5 +450,65 @@ export const googleSheetsService = {
       console.error('Erro ao salvar avaliação de entrevista:', error);
       return { success: false, error: 'Erro ao salvar avaliação de entrevista' };
     }
+  },
+
+  async getReportStats(): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'getReportStats'
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas de relatórios:', error);
+      return { success: false, error: 'Erro ao buscar estatísticas de relatórios' };
+    }
+  },
+
+  async getReport(
+    reportType: string,
+    analystEmail?: string
+  ): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'getReport',
+        reportType
+      });
+
+      if (analystEmail) {
+        params.append('analystEmail', analystEmail);
+      }
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar relatório:', error);
+      return { success: false, error: 'Erro ao buscar relatório' };
+    }
   }
 };
