@@ -965,8 +965,22 @@ function addStatusColumnIfNotExists() {
     'status_entrevista',
     'entrevistador',
     'data_entrevista',
-    'nota_final',
-    'observacoes_entrevista'
+    'interview_completed_at',
+    'interview_score',
+    'interview_result',
+    'interview_notes',
+    'formacao_adequada',
+    'graduacoes_competencias',
+    'descricao_processos',
+    'terminologia_tecnica',
+    'calma_clareza',
+    'escalas_flexiveis',
+    'adaptabilidade_mudancas',
+    'ajustes_emergencia',
+    'residencia',
+    'resolucao_conflitos',
+    'colaboracao_equipe',
+    'adaptacao_perfis'
   ];
 
   let added = false;
@@ -974,11 +988,17 @@ function addStatusColumnIfNotExists() {
     if (headers.indexOf(colName) === -1) {
       const lastCol = sh.getLastColumn();
       sh.getRange(1, lastCol + 1).setValue(colName);
+      Logger.log('➕ Coluna adicionada: ' + colName);
       added = true;
     }
   });
 
-  if (added) _bumpRev_();
+  if (added) {
+    _bumpRev_();
+    Logger.log('✅ Colunas adicionadas com sucesso');
+  } else {
+    Logger.log('✅ Todas as colunas já existem');
+  }
 }
 
 // ============================================
@@ -1298,14 +1318,29 @@ function saveInterviewEvaluation(params) {
     const headers = _getHeaders_(sh);
     const col = _colMap_(headers);
 
+    const cpfCol = col['CPF'];
     const statusEntrevistaCol = col['status_entrevista'];
-    const notaFinalCol = col['nota_final'];
-    const observacoesCol = col['observacoes_entrevista'];
     const entrevistadorCol = col['entrevistador'];
     const dataEntrevistaCol = col['data_entrevista'];
+    const completedAtCol = col['interview_completed_at'];
+    const scoreCol = col['interview_score'];
+    const resultCol = col['interview_result'];
+    const notesCol = col['interview_notes'];
+    const formacaoCol = col['formacao_adequada'];
+    const graduacoesCol = col['graduacoes_competencias'];
+    const descricaoCol = col['descricao_processos'];
+    const terminologiaCol = col['terminologia_tecnica'];
+    const calmaCol = col['calma_clareza'];
+    const escalasCol = col['escalas_flexiveis'];
+    const adaptabilidadeCol = col['adaptabilidade_mudancas'];
+    const ajustesCol = col['ajustes_emergencia'];
+    const residenciaCol = col['residencia'];
+    const conflitosCol = col['resolucao_conflitos'];
+    const colaboracaoCol = col['colaboracao_equipe'];
+    const adaptacaoPerfisCol = col['adaptacao_perfis'];
 
     const idx = _getIndex_(sh, headers);
-    const searchKey = String(params.registrationNumber).trim();
+    const searchKey = String(params.candidateId).trim();
     let row = idx[searchKey];
 
     if (!row) {
@@ -1315,24 +1350,62 @@ function saveInterviewEvaluation(params) {
       row = newIdx[searchKey];
     }
 
-    if (!row) throw new Error('Candidato não encontrado');
+    if (!row) {
+      Logger.log('❌ Candidato não encontrado: ' + searchKey);
+      throw new Error('Candidato não encontrado: ' + searchKey);
+    }
+
+    Logger.log('📝 Salvando avaliação do candidato na linha: ' + row);
 
     const lastCol = sh.getLastColumn();
     const rowVals = sh.getRange(row, 1, 1, lastCol).getValues()[0];
 
+    const secao1 = (Number(params.formacao_adequada) + Number(params.graduacoes_competencias)) * 2;
+    const secao2 = (Number(params.descricao_processos) + Number(params.terminologia_tecnica) + Number(params.calma_clareza)) * 2;
+    const secao3 = Number(params.escalas_flexiveis) + Number(params.adaptabilidade_mudancas) + Number(params.ajustes_emergencia);
+    const secao4 = Number(params.residencia);
+    const secao5 = (Number(params.resolucao_conflitos) + Number(params.colaboracao_equipe) + Number(params.adaptacao_perfis)) * 2;
+    const totalScore = secao1 + secao2 + secao3 + secao4 + secao5;
+
+    Logger.log('📊 Pontuação calculada: ' + totalScore + '/120');
+
     if (statusEntrevistaCol >= 0) rowVals[statusEntrevistaCol] = 'Avaliado';
-    if (notaFinalCol >= 0) rowVals[notaFinalCol] = params.finalScore || '';
-    if (observacoesCol >= 0) rowVals[observacoesCol] = params.observations || '';
     if (entrevistadorCol >= 0) rowVals[entrevistadorCol] = params.interviewerEmail || '';
     if (dataEntrevistaCol >= 0) rowVals[dataEntrevistaCol] = getCurrentTimestamp();
+    if (completedAtCol >= 0) rowVals[completedAtCol] = params.completed_at || getCurrentTimestamp();
+    if (scoreCol >= 0) rowVals[scoreCol] = totalScore;
+    if (resultCol >= 0) rowVals[resultCol] = params.resultado || '';
+    if (notesCol >= 0) rowVals[notesCol] = params.impressao_perfil || '';
+    if (formacaoCol >= 0) rowVals[formacaoCol] = params.formacao_adequada || '';
+    if (graduacoesCol >= 0) rowVals[graduacoesCol] = params.graduacoes_competencias || '';
+    if (descricaoCol >= 0) rowVals[descricaoCol] = params.descricao_processos || '';
+    if (terminologiaCol >= 0) rowVals[terminologiaCol] = params.terminologia_tecnica || '';
+    if (calmaCol >= 0) rowVals[calmaCol] = params.calma_clareza || '';
+    if (escalasCol >= 0) rowVals[escalasCol] = params.escalas_flexiveis || '';
+    if (adaptabilidadeCol >= 0) rowVals[adaptabilidadeCol] = params.adaptabilidade_mudancas || '';
+    if (ajustesCol >= 0) rowVals[ajustesCol] = params.ajustes_emergencia || '';
+    if (residenciaCol >= 0) rowVals[residenciaCol] = params.residencia || '';
+    if (conflitosCol >= 0) rowVals[conflitosCol] = params.resolucao_conflitos || '';
+    if (colaboracaoCol >= 0) rowVals[colaboracaoCol] = params.colaboracao_equipe || '';
+    if (adaptacaoPerfisCol >= 0) rowVals[adaptacaoPerfisCol] = params.adaptacao_perfis || '';
 
     _writeWholeRow_(sh, row, rowVals);
     _bumpRev_();
 
-    Logger.log('✅ Avaliação de entrevista salva');
-    return { success: true, message: 'Avaliação salva' };
+    Logger.log('✅ Avaliação de entrevista salva com sucesso');
+    Logger.log('   - Candidato: ' + searchKey);
+    Logger.log('   - Pontuação: ' + totalScore + '/120');
+    Logger.log('   - Resultado: ' + params.resultado);
+
+    return {
+      success: true,
+      message: 'Avaliação salva com sucesso',
+      score: totalScore,
+      resultado: params.resultado
+    };
   } catch (error) {
     Logger.log('❌ Erro em saveInterviewEvaluation: ' + error.toString());
+    Logger.log('   Stack: ' + error.stack);
     throw error;
   }
 }
