@@ -20,6 +20,8 @@ interface Candidate {
   cargo_administrativo?: string | boolean;
   cargo_assistencial?: string | boolean;
   area_atuacao_pretendida?: string;
+  registration_number?: string;
+  CPF?: string;
 }
 
 interface MessagingModalProps {
@@ -113,33 +115,68 @@ export default function MessagingModal({
       setLoading(true);
       const { googleSheetsService } = await import('../services/googleSheets');
 
-      // Coletar IDs dos candidatos
-      const candidateIds = candidates.map(c => c.id).join(',');
+      // ✅ Coletar IDs/CPFs dos candidatos para atualização
+      const candidateIdentifiers = candidates.map(c => ({
+        id: c.id,
+        registration_number: c.registration_number,
+        CPF: c.CPF,
+        nome: c.nome_completo || c.full_name
+      }));
 
-      console.log('📤 Enviando mensagens via Google Apps Script...');
+      console.log('📤 Enviando mensagens e atualizando status...');
       console.log('  Tipo:', messageType);
-      console.log('  Candidatos:', candidates.length);
+      console.log('  Candidatos:', candidateIdentifiers);
 
-      const result = await googleSheetsService.sendMessages(
+      // ✅ PRIMEIRO: Enviar as mensagens
+      const sendResult = await googleSheetsService.sendMessages(
         messageType,
         subject,
         content,
-        candidateIds,
+        candidateIdentifiers.map(c => c.id).join(','),
         user?.email || 'admin'
       );
 
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao enviar mensagens');
+      if (!sendResult.success) {
+        throw new Error(sendResult.error || 'Erro ao enviar mensagens');
       }
 
-      const data = result.data;
+      const data = sendResult.data;
       const successCount = data.successCount || 0;
       const failCount = data.failCount || 0;
       const results = data.results || [];
 
-      console.log('✅ Sucesso:', successCount);
+      console.log('✅ Mensagens enviadas:', successCount);
       console.log('❌ Falhas:', failCount);
 
+      // ✅ SEGUNDO: Atualizar o status de envio na planilha
+      if (successCount > 0) {
+        console.log('🔄 Atualizando status de envio na planilha...');
+        
+        // Filtrar apenas os candidatos que receberam mensagens com sucesso
+        const successfulCandidates = candidateIdentifiers.filter(candidate => {
+          const result = results.find((r: any) => r.candidateId === candidate.id);
+          return result && result.success;
+        });
+
+        if (successfulCandidates.length > 0) {
+          console.log('📝 Candidatos para marcar como enviado:', successfulCandidates);
+
+          // ✅ ATUALIZAR O CAMPO email_sent OU sms_sent
+          const updateResult = await googleSheetsService.updateMessageStatus(
+            successfulCandidates.map(c => c.registration_number || c.CPF || c.id),
+            messageType,
+            'Sim' // ✅ Valor que será gravado na planilha
+          );
+
+          if (!updateResult.success) {
+            console.error('⚠️ Erro ao atualizar status, mas mensagens foram enviadas:', updateResult.error);
+          } else {
+            console.log('✅ Status atualizado com sucesso na planilha');
+          }
+        }
+      }
+
+      // ✅ MOSTRAR RESULTADO PARA O USUÁRIO
       let message = `${successCount} mensagem(ns) enviada(s) com sucesso`;
 
       if (failCount > 0) {
@@ -153,7 +190,7 @@ export default function MessagingModal({
       alert(message);
 
       if (successCount > 0) {
-        onMessagesSent();
+        onMessagesSent(); // ✅ Isso vai recarregar a lista e mostrar os status atualizados
         handleClose();
       }
     } catch (error) {
@@ -321,7 +358,7 @@ export default function MessagingModal({
             ) : (
               <>
                 {messageType === 'email' ? <Mail className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
-                Enviar
+                Enviar Mensagens
               </>
             )}
           </button>
