@@ -159,6 +159,10 @@ function handleRequest(e) {
       'getDisqualificationReasons': () => getDisqualificationReasons(),
       'getMessageTemplates': () => getMessageTemplates(params),
       'sendMessages': () => sendMessages(params),
+      'getInterviewCandidates': () => getInterviewCandidates(params),
+      'getInterviewers': () => getInterviewers(params),
+      'updateInterviewStatus': () => updateInterviewStatus(params),
+      'saveInterviewEvaluation': () => saveInterviewEvaluation(params),
       'test': () => testConnection()
     };
 
@@ -834,7 +838,12 @@ function addStatusColumnIfNotExists() {
     'Data Triagem',
     'Analista',
     'EMAIL',
-    'TELEFONE'
+    'TELEFONE',
+    'status_entrevista',
+    'entrevistador',
+    'data_entrevista',
+    'nota_final',
+    'observacoes_entrevista'
   ];
 
   let added = false;
@@ -847,4 +856,163 @@ function addStatusColumnIfNotExists() {
   });
 
   if (added) _bumpRev_();
+}
+
+// ============================================
+// FUNÇÕES DE ENTREVISTA
+// ============================================
+
+function getInterviewCandidates(params) {
+  try {
+    const {sheet, headers, values} = _readSheetBlock_(SHEET_CANDIDATOS);
+    if (!sheet || !values.length) return [];
+
+    const col = _colMap_(headers);
+    const statusEntrevistaCol = col['status_entrevista'];
+    const cpfCol = col['CPF'];
+    const regNumCol = col['Número de Inscrição'];
+
+    if (statusEntrevistaCol === undefined) {
+      Logger.log('⚠️ Coluna status_entrevista não encontrada');
+      return [];
+    }
+
+    const candidates = [];
+    for (let i = 0; i < values.length; i++) {
+      const statusEntrevista = values[i][statusEntrevistaCol];
+
+      if (statusEntrevista === 'Aguardando' || statusEntrevista === 'aguardando') {
+        const candidate = {};
+        headers.forEach((header, index) => {
+          candidate[header] = values[i][index];
+        });
+        candidate.id = values[i][cpfCol] || values[i][regNumCol];
+        candidate.registration_number = values[i][regNumCol] || values[i][cpfCol];
+        candidates.push(candidate);
+      }
+    }
+
+    Logger.log('📋 Candidatos para entrevista: ' + candidates.length);
+    return candidates;
+  } catch (error) {
+    Logger.log('❌ Erro em getInterviewCandidates: ' + error.toString());
+    throw error;
+  }
+}
+
+function getInterviewers(params) {
+  try {
+    const sheet = initUsuariosSheet();
+    const data = sheet.getDataRange().getValues();
+    const interviewers = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const rawRole = data[i][2];
+      const normalizedRole = rawRole ? String(rawRole).toLowerCase().trim() : '';
+
+      if (normalizedRole === 'entrevistador') {
+        interviewers.push({
+          id: data[i][3] || data[i][0],
+          email: data[i][0],
+          name: data[i][1] || data[i][0],
+          role: normalizedRole,
+          active: true
+        });
+      }
+    }
+
+    Logger.log('👥 Entrevistadores encontrados: ' + interviewers.length);
+    return interviewers;
+  } catch (error) {
+    Logger.log('❌ Erro em getInterviewers: ' + error.toString());
+    throw error;
+  }
+}
+
+function updateInterviewStatus(params) {
+  try {
+    const sh = _sheet(SHEET_CANDIDATOS);
+    const headers = _getHeaders_(sh);
+    const col = _colMap_(headers);
+
+    const statusEntrevistaCol = col['status_entrevista'];
+    const entrevistadorCol = col['entrevistador'];
+    const dataEntrevistaCol = col['data_entrevista'];
+    const cpfCol = col['CPF'];
+    const regNumCol = col['Número de Inscrição'];
+
+    const idx = _getIndex_(sh, headers);
+    const searchKey = String(params.registrationNumber).trim();
+    let row = idx[searchKey];
+
+    if (!row) {
+      const newIdx = _buildIndex_(sh, headers);
+      const rev = _getRev_();
+      CacheService.getDocumentCache().put(`${IDX_CACHE_KEY}${rev}`, JSON.stringify(newIdx), CACHE_TTL_SEC);
+      row = newIdx[searchKey];
+    }
+
+    if (!row) throw new Error('Candidato não encontrado');
+
+    const lastCol = sh.getLastColumn();
+    const rowVals = sh.getRange(row, 1, 1, lastCol).getValues()[0];
+
+    if (statusEntrevistaCol >= 0) rowVals[statusEntrevistaCol] = params.status;
+    if (entrevistadorCol >= 0 && params.interviewerEmail) rowVals[entrevistadorCol] = params.interviewerEmail;
+    if (dataEntrevistaCol >= 0) rowVals[dataEntrevistaCol] = getCurrentTimestamp();
+
+    _writeWholeRow_(sh, row, rowVals);
+    _bumpRev_();
+
+    Logger.log('✅ Status de entrevista atualizado');
+    return { success: true, message: 'Status atualizado' };
+  } catch (error) {
+    Logger.log('❌ Erro em updateInterviewStatus: ' + error.toString());
+    throw error;
+  }
+}
+
+function saveInterviewEvaluation(params) {
+  try {
+    const sh = _sheet(SHEET_CANDIDATOS);
+    const headers = _getHeaders_(sh);
+    const col = _colMap_(headers);
+
+    const statusEntrevistaCol = col['status_entrevista'];
+    const notaFinalCol = col['nota_final'];
+    const observacoesCol = col['observacoes_entrevista'];
+    const entrevistadorCol = col['entrevistador'];
+    const dataEntrevistaCol = col['data_entrevista'];
+
+    const idx = _getIndex_(sh, headers);
+    const searchKey = String(params.registrationNumber).trim();
+    let row = idx[searchKey];
+
+    if (!row) {
+      const newIdx = _buildIndex_(sh, headers);
+      const rev = _getRev_();
+      CacheService.getDocumentCache().put(`${IDX_CACHE_KEY}${rev}`, JSON.stringify(newIdx), CACHE_TTL_SEC);
+      row = newIdx[searchKey];
+    }
+
+    if (!row) throw new Error('Candidato não encontrado');
+
+    const lastCol = sh.getLastColumn();
+    const rowVals = sh.getRange(row, 1, 1, lastCol).getValues()[0];
+
+    if (statusEntrevistaCol >= 0) rowVals[statusEntrevistaCol] = 'Avaliado';
+    if (notaFinalCol >= 0) rowVals[notaFinalCol] = params.finalScore || '';
+    if (observacoesCol >= 0) rowVals[observacoesCol] = params.observations || '';
+    if (entrevistadorCol >= 0) rowVals[entrevistadorCol] = params.interviewerEmail || '';
+    if (dataEntrevistaCol >= 0) rowVals[dataEntrevistaCol] = getCurrentTimestamp();
+
+    _writeWholeRow_(sh, row, rowVals);
+    _bumpRev_();
+
+    Logger.log('✅ Avaliação de entrevista salva');
+    return { success: true, message: 'Avaliação salva' };
+  } catch (error) {
+    Logger.log('❌ Erro em saveInterviewEvaluation: ' + error.toString());
+    throw error;
+  }
 }
