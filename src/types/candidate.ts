@@ -35,6 +35,23 @@ export interface Candidate {
   priority?: number;
   notes?: string;
 
+  // Controle de mensagens
+  email_sent?: string;        // Data/hora que email foi enviado
+  sms_sent?: string;          // Data/hora que SMS foi enviado
+
+  // Entrevista
+  entrevistador?: string;     // Email do entrevistador alocado
+  entrevistador_at?: string;  // Data/hora da alocação para entrevista
+  entrevistador_by?: string;  // Email do admin que alocou para entrevista
+
+  // Avaliação da entrevista
+  interview_status?: 'agendada' | 'realizada' | 'cancelada';
+  interview_date?: string;
+  interview_score?: number;   // Pontuação total da entrevista
+  interview_result?: 'Classificado' | 'Desclassificado'; // Resultado final da entrevista
+  interview_notes?: string;   // Impressões do entrevistador
+  interview_completed_at?: string;
+
   // Timestamps (Colunas da planilha)
   DataCadastro?: string;      // Data de cadastro na planilha
   created_at?: string;        // Compatibilidade
@@ -163,6 +180,41 @@ export interface AssignmentRequest {
   candidateIds: string[];
   analystId: string;
   adminId: string;
+}
+
+// ✅ TIPO PARA AVALIAÇÃO DE ENTREVISTA
+export interface InterviewEvaluation {
+  candidateId: string;
+
+  // Seção 1: Formação (max 20)
+  formacao_adequada: 1 | 2 | 3 | 4 | 5;
+  graduacoes_competencias: 1 | 2 | 3 | 4 | 5;
+
+  // Seção 2: Comunicação (max 30)
+  descricao_processos: 1 | 2 | 3 | 4 | 5;
+  terminologia_tecnica: 1 | 2 | 3 | 4 | 5;
+  calma_clareza: 1 | 2 | 3 | 4 | 5;
+
+  // Seção 3: Disponibilidade (max 30)
+  escalas_flexiveis: 0 | 5 | 10;
+  adaptabilidade_mudancas: 0 | 5 | 10;
+  ajustes_emergencia: 0 | 5 | 10;
+
+  // Seção 4: Residência (max 10)
+  residencia: 2 | 4 | 6 | 8 | 10;
+
+  // Seção 5: Relacionamento (max 30)
+  resolucao_conflitos: 1 | 2 | 3 | 4 | 5;
+  colaboracao_equipe: 1 | 2 | 3 | 4 | 5;
+  adaptacao_perfis: 1 | 2 | 3 | 4 | 5;
+
+  // Impressão e resultado
+  impressao_perfil: string;
+  resultado: 'Classificado' | 'Desclassificado';
+
+  // Metadata
+  interviewerEmail: string;
+  completed_at: string;
 }
 
 // ✅ EXPORT DEFAULT PARA IMPORTAÇÃO FÁCIL

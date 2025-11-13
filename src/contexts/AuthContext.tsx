@@ -4,7 +4,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'analista';
+  role: 'admin' | 'analista' | 'entrevistador';
   active: boolean;
   password?: string; // Para autenticação básica
 }
@@ -16,6 +16,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAdmin: () => boolean;
   isAnalyst: () => boolean;
+  isInterviewer: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -232,8 +233,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return user?.role === 'analista';
   }
 
+  function isInterviewer(): boolean {
+    return user?.role === 'entrevistador';
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isAnalyst }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isAnalyst, isInterviewer }}>
       {children}
     </AuthContext.Provider>
   );

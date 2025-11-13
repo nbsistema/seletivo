@@ -1,41 +1,36 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Mail, MessageSquare, Loader2, Send, Calendar } from 'lucide-react';
-import MessagingModal from './MessagingModal';
+import { Calendar, Loader2, UserPlus } from 'lucide-react';
 import type { Candidate } from '../types/candidate';
+import { useAuth } from '../contexts/AuthContext';
 
-export default function ClassifiedCandidatesList() {
+export default function InterviewCandidatesList() {
+  const { user } = useAuth();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [showMessagingModal, setShowMessagingModal] = useState(false);
   const [allocating, setAllocating] = useState(false);
+  const [interviewers, setInterviewers] = useState<any[]>([]);
+  const [selectedInterviewer, setSelectedInterviewer] = useState('');
 
   useEffect(() => {
-    loadClassifiedCandidates();
+    loadInterviewCandidates();
+    loadInterviewers();
   }, []);
 
-  async function loadClassifiedCandidates() {
+  async function loadInterviewCandidates() {
     try {
       setLoading(true);
       const { googleSheetsService } = await import('../services/googleSheets');
 
-      console.log('🚀 Iniciando busca por candidatos classificados...');
-      const result = await googleSheetsService.getCandidatesByStatus('Classificado');
-
-      console.log('📊 Resultado completo:', JSON.stringify(result, null, 2));
-      console.log('✅ result.success:', result.success);
-      console.log('📦 result.data:', result.data);
-      console.log('📦 Tipo de result.data:', typeof result.data);
-      console.log('📦 É array?', Array.isArray(result.data));
+      const result = await googleSheetsService.getInterviewCandidates();
 
       if (!result.success) {
-        console.error('❌ Erro retornado:', result.error);
+        console.error('Erro:', result.error);
         alert(`Erro ao carregar candidatos: ${result.error}`);
         return;
       }
 
       let candidatesData: Candidate[] = [];
-
       if (Array.isArray(result.data)) {
         candidatesData = result.data;
       } else if (result.data && typeof result.data === 'object') {
@@ -44,20 +39,25 @@ export default function ClassifiedCandidatesList() {
         }
       }
 
-      console.log('📋 Candidatos extraídos:', candidatesData);
-      console.log('📏 Total:', candidatesData.length);
-
-      if (candidatesData.length > 0) {
-        console.log('👤 Primeiro candidato:', JSON.stringify(candidatesData[0], null, 2));
-        console.log('🔑 Campos:', Object.keys(candidatesData[0]));
-      }
-
       setCandidates(candidatesData);
     } catch (error) {
-      console.error('❌ Erro ao carregar candidatos classificados:', error);
+      console.error('Erro ao carregar candidatos para entrevista:', error);
       alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadInterviewers() {
+    try {
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.getInterviewers();
+
+      if (result.success && Array.isArray(result.data)) {
+        setInterviewers(result.data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar entrevistadores:', error);
     }
   }
 
@@ -79,42 +79,44 @@ export default function ClassifiedCandidatesList() {
     }
   }
 
-  function getSelectedCandidatesData() {
-    return candidates.filter(c => selectedCandidates.has(c.id));
-  }
-
-  async function handleMoveToInterview() {
-    const selected = getSelectedCandidatesData();
-    const withMessages = selected.filter(c => c.email_sent || c.sms_sent);
-
-    if (withMessages.length === 0) {
-      alert('Selecione apenas candidatos que já receberam email ou SMS');
+  async function handleAllocate() {
+    if (!selectedInterviewer) {
+      alert('Selecione um entrevistador');
       return;
     }
 
-    if (withMessages.length !== selected.length) {
-      const diff = selected.length - withMessages.length;
-      if (!confirm(`${diff} candidato(s) selecionado(s) ainda não receberam mensagens. Deseja continuar apenas com os ${withMessages.length} que receberam?`)) {
-        return;
-      }
+    if (selectedCandidates.size === 0) {
+      alert('Selecione pelo menos um candidato');
+      return;
     }
 
     try {
       setAllocating(true);
       const { googleSheetsService } = await import('../services/googleSheets');
 
-      const candidateIds = withMessages.map(c => c.registration_number).join(',');
-      const result = await googleSheetsService.moveToInterview(candidateIds);
+      const candidateIds = Array.from(selectedCandidates)
+        .map(id => {
+          const candidate = candidates.find(c => c.id === id);
+          return candidate?.registration_number || id;
+        })
+        .join(',');
+
+      const result = await googleSheetsService.allocateToInterviewer(
+        candidateIds,
+        selectedInterviewer,
+        user?.email || 'admin'
+      );
 
       if (!result.success) {
-        throw new Error(result.error || 'Erro ao mover para entrevista');
+        throw new Error(result.error || 'Erro ao alocar candidatos');
       }
 
-      alert(`${withMessages.length} candidato(s) movido(s) para entrevista com sucesso!`);
+      alert(`${selectedCandidates.size} candidato(s) alocado(s) para entrevista com sucesso!`);
       setSelectedCandidates(new Set());
-      loadClassifiedCandidates();
+      setSelectedInterviewer('');
+      loadInterviewCandidates();
     } catch (error) {
-      console.error('Erro ao mover para entrevista:', error);
+      console.error('Erro ao alocar candidatos:', error);
       alert(`Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setAllocating(false);
@@ -132,8 +134,8 @@ export default function ClassifiedCandidatesList() {
   if (candidates.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
-        <CheckCircle className="w-16 h-16 text-gray-300 mb-4" />
-        <p className="text-gray-500">Nenhum candidato classificado ainda</p>
+        <Calendar className="w-16 h-16 text-gray-300 mb-4" />
+        <p className="text-gray-500">Nenhum candidato para entrevista ainda</p>
       </div>
     );
   }
@@ -142,34 +144,39 @@ export default function ClassifiedCandidatesList() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Candidatos Classificados</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Candidatos para Entrevista</h2>
           <p className="text-sm text-gray-600 mt-1">
             {selectedCandidates.size > 0
               ? `${selectedCandidates.size} candidato(s) selecionado(s)`
-              : `${candidates.length} candidato(s) classificado(s)`}
+              : `${candidates.length} candidato(s) aguardando alocação`}
           </p>
         </div>
 
         {selectedCandidates.size > 0 && (
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowMessagingModal(true)}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          <div className="flex items-center gap-3">
+            <select
+              value={selectedInterviewer}
+              onChange={(e) => setSelectedInterviewer(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
-              <MessageSquare className="w-4 h-4" />
-              Enviar Mensagens
-            </button>
+              <option value="">Selecione o entrevistador</option>
+              {interviewers.map((interviewer) => (
+                <option key={interviewer.email} value={interviewer.email}>
+                  {interviewer.name || interviewer.nome || interviewer.email}
+                </option>
+              ))}
+            </select>
             <button
-              onClick={handleMoveToInterview}
-              disabled={allocating}
+              onClick={handleAllocate}
+              disabled={allocating || !selectedInterviewer}
               className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 disabled:opacity-50"
             >
               {allocating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Calendar className="w-4 h-4" />
+                <UserPlus className="w-4 h-4" />
               )}
-              Mover para Entrevista
+              Alocar para Entrevista
             </button>
           </div>
         )}
@@ -194,9 +201,6 @@ export default function ClassifiedCandidatesList() {
                 Nome Social
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                Área
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                 Cargo Pretendido
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
@@ -207,9 +211,6 @@ export default function ClassifiedCandidatesList() {
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                 Telefone
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                Status Mensagens
               </th>
             </tr>
           </thead>
@@ -240,45 +241,16 @@ export default function ClassifiedCandidatesList() {
                     {candidate.NOMESOCIAL || '-'}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {candidate.AREAATUACAO || 'Não informado'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
                     {candidate.CARGOPRETENDIDO || 'Não informado'}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600 font-mono">
                     {candidate.CPF || 'Não informado'}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {email ? (
-                      <a href={`mailto:${email}`} className="text-blue-600 hover:underline flex items-center gap-1">
-                        <Mail className="w-3 h-3" />
-                        {email}
-                      </a>
-                    ) : (
-                      'Não informado'
-                    )}
+                    {email || 'Não informado'}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {telefone || 'Não informado'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      {candidate.email_sent && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                          <Mail className="w-3 h-3" />
-                          Email enviado
-                        </span>
-                      )}
-                      {candidate.sms_sent && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                          <MessageSquare className="w-3 h-3" />
-                          SMS enviado
-                        </span>
-                      )}
-                      {!candidate.email_sent && !candidate.sms_sent && (
-                        <span className="text-xs text-gray-400">Nenhuma mensagem enviada</span>
-                      )}
-                    </div>
                   </td>
                 </tr>
               );
@@ -286,16 +258,6 @@ export default function ClassifiedCandidatesList() {
           </tbody>
         </table>
       </div>
-
-      <MessagingModal
-        isOpen={showMessagingModal}
-        onClose={() => setShowMessagingModal(false)}
-        candidates={getSelectedCandidatesData()}
-        onMessagesSent={() => {
-          setSelectedCandidates(new Set());
-          setShowMessagingModal(false);
-        }}
-      />
     </div>
   );
 }

@@ -253,5 +253,171 @@ export const googleSheetsService = {
         error: error instanceof Error ? error.message : 'Erro ao enviar mensagens'
       };
     }
+  },
+
+  async moveToInterview(candidateIds: string): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'moveToInterview',
+        candidateIds
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao mover para entrevista:', error);
+      return { success: false, error: 'Erro ao mover para entrevista' };
+    }
+  },
+
+  async getInterviewCandidates(): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'getInterviewCandidates'
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar candidatos para entrevista:', error);
+      return { success: false, error: 'Erro ao buscar candidatos para entrevista' };
+    }
+  },
+
+  async getInterviewers(): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'getInterviewers'
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar entrevistadores:', error);
+      return { success: false, error: 'Erro ao buscar entrevistadores' };
+    }
+  },
+
+  async allocateToInterviewer(
+    candidateIds: string,
+    interviewerEmail: string,
+    adminEmail: string
+  ): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'allocateToInterviewer',
+        candidateIds,
+        interviewerEmail,
+        adminEmail
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao alocar para entrevistador:', error);
+      return { success: false, error: 'Erro ao alocar para entrevistador' };
+    }
+  },
+
+  async getInterviewerCandidates(interviewerEmail: string): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'getInterviewerCandidates',
+        interviewerEmail
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar candidatos do entrevistador:', error);
+      return { success: false, error: 'Erro ao buscar candidatos do entrevistador' };
+    }
+  },
+
+  async saveInterviewEvaluation(evaluation: any): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'saveInterviewEvaluation',
+        ...evaluation
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao salvar avaliação de entrevista:', error);
+      return { success: false, error: 'Erro ao salvar avaliação de entrevista' };
+    }
   }
 };

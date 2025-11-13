@@ -7,13 +7,14 @@ import CsvImportTool from './CsvImportTool';
 import ClassifiedCandidatesList from './ClassifiedCandidatesList';
 import DisqualifiedCandidatesList from './DisqualifiedCandidatesList';
 import ReviewCandidatesList from './ReviewCandidatesList';
-import { BarChart3, Users, Upload, CheckCircle, XCircle, Eye } from 'lucide-react';
+import InterviewCandidatesList from './InterviewCandidatesList';
+import { BarChart3, Users, Upload, CheckCircle, XCircle, Eye, Calendar } from 'lucide-react';
 
 export default function AdminDashboard() {
   console.log('🎨 AdminDashboard RENDERIZADO - Este é o painel de ADMINISTRADOR');
   const { user, logout } = useAuth();
   console.log('👤 AdminDashboard - Usuário:', user);
-  const [activeTab, setActiveTab] = useState<'allocation' | 'my-candidates' | 'import' | 'classified' | 'disqualified' | 'review'>('allocation');
+  const [activeTab, setActiveTab] = useState<'allocation' | 'my-candidates' | 'import' | 'classified' | 'disqualified' | 'review' | 'interview'>('allocation');
   const [stats, setStats] = useState({
     total: 0,
     pendente: 0,
@@ -211,6 +212,17 @@ export default function AdminDashboard() {
               <Eye className="w-4 h-4" />
               À Revisar
             </button>
+            <button
+              onClick={() => setActiveTab('interview')}
+              className={`px-4 py-3 font-medium flex items-center gap-2 border-b-2 transition-colors ${
+                activeTab === 'interview'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              Entrevista
+            </button>
           </div>
         </div>
       </div>
@@ -231,6 +243,7 @@ export default function AdminDashboard() {
         {activeTab === 'classified' && <ClassifiedCandidatesList />}
         {activeTab === 'disqualified' && <DisqualifiedCandidatesList />}
         {activeTab === 'review' && <ReviewCandidatesList />}
+        {activeTab === 'interview' && <InterviewCandidatesList />}
       </div>
     </div>
   );

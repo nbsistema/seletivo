@@ -2,6 +2,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './components/LoginPage';
 import AdminDashboard from './components/AdminDashboard';
 import AnalystDashboard from './components/AnalystDashboard';
+import InterviewerDashboard from './components/InterviewerDashboard';
 import { Loader2 } from 'lucide-react';
 
 function AppContent() {
@@ -37,6 +38,12 @@ function AppContent() {
     console.log('✅ Redirecionando para AdminDashboard');
     console.log('='.repeat(60));
     return <AdminDashboard />;
+  }
+
+  if (user.role === 'entrevistador') {
+    console.log('✅ Redirecionando para InterviewerDashboard');
+    console.log('='.repeat(60));
+    return <InterviewerDashboard />;
   }
 
   console.log('✅ Redirecionando para AnalystDashboard');
