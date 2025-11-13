@@ -353,6 +353,8 @@ function getCandidatesByStatus(params) {
   const col = _colMap_(headers);
   const statusCol = col['Status'];
   const cpfCol = col['CPF'];
+  const emailSentCol = col['EMAIL_SENT'];
+  const smsSentCol = col['SMS_SENT'];
 
   const filtered = [];
   for (let i=0;i<values.length;i++){
@@ -361,6 +363,10 @@ function getCandidatesByStatus(params) {
       for (let j=0;j<headers.length;j++) obj[headers[j]] = values[i][j];
       obj.id = values[i][cpfCol];
       obj.registration_number = values[i][cpfCol];
+
+      obj.email_sent = emailSentCol >= 0 ? (values[i][emailSentCol] === 'Sim' || values[i][emailSentCol] === true || values[i][emailSentCol] === 'TRUE') : false;
+      obj.sms_sent = smsSentCol >= 0 ? (values[i][smsSentCol] === 'Sim' || values[i][smsSentCol] === true || values[i][smsSentCol] === 'TRUE') : false;
+
       filtered.push(obj);
     }
   }
@@ -790,6 +796,8 @@ function sendMessages(params) {
         candidateName: nome,
         success: true
       });
+
+      _updateMessageStatusInCandidates_(cpf, messageType);
     } else {
       failCount++;
       results.push({
@@ -815,6 +823,44 @@ function sendMessages(params) {
 // TESTE
 // ============================================
 
+function _updateMessageStatusInCandidates_(cpf, messageType) {
+  try {
+    const sh = _sheet(SHEET_CANDIDATOS);
+    if (!sh) return;
+
+    const headers = _getHeaders_(sh);
+    const col = _colMap_(headers);
+    const cpfCol = col['CPF'];
+
+    let targetCol;
+    if (messageType === 'email') {
+      targetCol = col['EMAIL_SENT'];
+    } else if (messageType === 'sms') {
+      targetCol = col['SMS_SENT'];
+    }
+
+    if (targetCol === undefined || targetCol < 0) {
+      Logger.log('⚠️ Coluna ' + (messageType === 'email' ? 'EMAIL_SENT' : 'SMS_SENT') + ' não encontrada');
+      return;
+    }
+
+    const idx = _getIndex_(sh, headers);
+    const searchKey = String(cpf).trim();
+    const row = idx[searchKey];
+
+    if (!row) {
+      Logger.log('⚠️ Candidato não encontrado para atualizar status de mensagem: ' + cpf);
+      return;
+    }
+
+    sh.getRange(row, targetCol + 1).setValue('Sim');
+    Logger.log('✅ Status de mensagem atualizado para ' + cpf + ' - ' + messageType);
+
+  } catch (error) {
+    Logger.log('❌ Erro ao atualizar status de mensagem: ' + error.toString());
+  }
+}
+
 function testConnection() {
   return {
     status: 'OK',
@@ -839,6 +885,8 @@ function addStatusColumnIfNotExists() {
     'Analista',
     'EMAIL',
     'TELEFONE',
+    'EMAIL_SENT',
+    'SMS_SENT',
     'status_entrevista',
     'entrevistador',
     'data_entrevista',
@@ -871,6 +919,8 @@ function getInterviewCandidates(params) {
     const statusEntrevistaCol = col['status_entrevista'];
     const cpfCol = col['CPF'];
     const regNumCol = col['Número de Inscrição'];
+    const emailSentCol = col['EMAIL_SENT'];
+    const smsSentCol = col['SMS_SENT'];
 
     if (statusEntrevistaCol === undefined) {
       Logger.log('⚠️ Coluna status_entrevista não encontrada');
@@ -888,6 +938,10 @@ function getInterviewCandidates(params) {
         });
         candidate.id = values[i][cpfCol] || values[i][regNumCol];
         candidate.registration_number = values[i][regNumCol] || values[i][cpfCol];
+
+        candidate.email_sent = emailSentCol >= 0 ? (values[i][emailSentCol] === 'Sim' || values[i][emailSentCol] === true || values[i][emailSentCol] === 'TRUE') : false;
+        candidate.sms_sent = smsSentCol >= 0 ? (values[i][smsSentCol] === 'Sim' || values[i][smsSentCol] === true || values[i][smsSentCol] === 'TRUE') : false;
+
         candidates.push(candidate);
       }
     }

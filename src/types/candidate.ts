@@ -36,8 +36,8 @@ export interface Candidate {
   notes?: string;
 
   // Controle de mensagens
-  email_sent?: string;        // Data/hora que email foi enviado
-  sms_sent?: string;          // Data/hora que SMS foi enviado
+  email_sent?: boolean | string;  // Boolean (true/false) ou string (data/hora ou "Sim")
+  sms_sent?: boolean | string;    // Boolean (true/false) ou string (data/hora ou "Sim")
 
   // Entrevista
   entrevistador?: string;     // Email do entrevistador alocado
