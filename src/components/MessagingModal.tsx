@@ -85,7 +85,7 @@ export default function MessagingModal({
     if (!result.success) {
       console.warn('⚠️ Não foi possível carregar aliases, usando padrão...');
       // Usa um alias padrão fixo como fallback
-      const defaultAlias = 'recrutamento@empresa.com'; // ← Altere para seu alias padrão
+      const defaultAlias = 'seletivoinstitutoacqua@gmail.com'; // ← Altere para seu alias padrão
       setAliases([defaultAlias]);
       setSelectedAlias(defaultAlias);
       return;
@@ -95,7 +95,7 @@ export default function MessagingModal({
     
     if (aliasesData.length === 0) {
       console.warn('⚠️ Nenhum alias encontrado, usando padrão...');
-      const defaultAlias = 'recrutamento@empresa.com'; // ← Altere para seu alias padrão
+      const defaultAlias = 'seletivoinstitutoacqua@gmail.com'; // ← Altere para seu alias padrão
       setAliases([defaultAlias]);
       setSelectedAlias(defaultAlias);
       return;
@@ -108,7 +108,7 @@ export default function MessagingModal({
   } catch (error) {
     console.error('Erro ao carregar aliases, usando padrão:', error);
     // Fallback para alias padrão
-    const defaultAlias = 'recrutamento@empresa.com'; // ← Altere para seu alias padrão
+    const defaultAlias = 'seletivoinstitutoacqua@gmail.com'; // ← Altere para seu alias padrão
     setAliases([defaultAlias]);
     setSelectedAlias(defaultAlias);
   } finally {
