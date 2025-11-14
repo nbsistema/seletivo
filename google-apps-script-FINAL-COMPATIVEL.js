@@ -45,6 +45,15 @@ function handleRequest(e) {
     Logger.log('🔵 Ação recebida: ' + action);
     Logger.log('📦 Parâmetros: ' + JSON.stringify(params));
 
+    // Se não houver action, retorna erro informativo
+    if (!action) {
+      return createResponse({
+        error: 'Parâmetro "action" é obrigatório',
+        message: 'Para testar, use a função testConnection() diretamente ou acesse via URL com ?action=test',
+        exemplo: 'URL?action=test'
+      }, 400);
+    }
+
     var routes = {
       'getUserRole': getUserRole,
       'getAllUsers': getAllUsers,
@@ -96,13 +105,21 @@ function handleRequest(e) {
 
 function parseRequest(e) {
   try {
+    // Se não houver parâmetros (execução manual), retorna objeto vazio
+    if (!e) {
+      return {};
+    }
+
+    // Tenta parsear POST data
     if (e.postData && e.postData.contents) {
       return JSON.parse(e.postData.contents);
     }
+
+    // Retorna parâmetros GET
     return e.parameter || {};
   } catch (error) {
     Logger.log('Erro ao fazer parse: ' + error.toString());
-    return e.parameter || {};
+    return {};
   }
 }
 
@@ -1497,5 +1514,48 @@ function testConnection(params) {
   } catch (error) {
     Logger.log('Erro em testConnection: ' + error.toString());
     return createResponse({ error: error.toString() }, 500);
+  }
+}
+
+// ============================================
+// FUNÇÃO PARA TESTAR NO EDITOR
+// ============================================
+
+/**
+ * Função para testar diretamente no editor do Google Apps Script
+ * Clique em "Executar" com esta função selecionada para testar
+ */
+function testarScript() {
+  Logger.log('🧪 Iniciando teste do script...');
+
+  try {
+    // Testa conexão com a planilha
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    Logger.log('✅ Conexão com planilha OK');
+    Logger.log('📋 Nome da planilha: ' + ss.getName());
+
+    // Lista as abas
+    var sheets = ss.getSheets();
+    Logger.log('📊 Total de abas: ' + sheets.length);
+
+    for (var i = 0; i < sheets.length; i++) {
+      Logger.log('  - ' + sheets[i].getName());
+    }
+
+    // Testa a função testConnection
+    Logger.log('\n🔍 Testando função testConnection...');
+    var result = testConnection({});
+    Logger.log('📦 Resultado: ' + JSON.stringify(result));
+
+    Logger.log('\n✅ TESTE CONCLUÍDO COM SUCESSO!');
+    Logger.log('🚀 O script está funcionando corretamente.');
+    Logger.log('📝 Próximo passo: Implantar como Web App');
+
+    return 'Teste concluído com sucesso!';
+
+  } catch (error) {
+    Logger.log('❌ ERRO NO TESTE: ' + error.toString());
+    Logger.log('🔍 Verifique o SPREADSHEET_ID na linha 16');
+    return 'Erro: ' + error.toString();
   }
 }
