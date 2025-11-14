@@ -20,24 +20,22 @@ class GoogleSheetsService {
         throw new Error('URL do Google Script não configurada. Verifique o arquivo .env');
       }
 
-      const url = new URL(this.scriptUrl);
-      url.searchParams.append('action', action);
+      const payload = {
+        action,
+        ...data
+      };
 
-      if (data) {
-        Object.keys(data).forEach(key => {
-          url.searchParams.append(key, String(data[key]));
-        });
-      }
+      console.log('🔄 [UserService] Chamando Google Apps Script:', action);
+      console.log('📦 [UserService] Payload:', payload);
 
-      console.log('🔄 [UserService] Chamando Google Apps Script:', url.toString());
-
-      const response = await fetch(url.toString(), {
-        method: 'GET',
+      const response = await fetch(this.scriptUrl, {
+        method: 'POST',
         mode: 'cors',
-        redirect: 'follow',
         headers: {
+          'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }
+        },
+        body: JSON.stringify(payload)
       });
 
       console.log('📡 [UserService] Resposta recebida - Status:', response.status);
