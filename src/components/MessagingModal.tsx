@@ -45,10 +45,16 @@ export default function MessagingModal({
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
+  const [aliases, setAliases] = useState<string[]>([]);
+  const [selectedAlias, setSelectedAlias] = useState<string>('');
+  const [loadingAliases, setLoadingAliases] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       loadTemplates();
+      if (messageType === 'email') {
+        loadAliases();
+      }
     }
   }, [isOpen, messageType]);
 
@@ -67,6 +73,34 @@ export default function MessagingModal({
       console.error('Erro ao carregar templates:', error);
     } finally {
       setLoadingTemplates(false);
+    }
+  }
+
+  async function loadAliases() {
+    try {
+      setLoadingAliases(true);
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.getEmailAliases();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao carregar aliases');
+      }
+
+      const aliasesData = result.data || [];
+      setAliases(aliasesData);
+      
+      // Seleciona o primeiro alias por padrão, se disponível
+      if (aliasesData.length > 0) {
+        setSelectedAlias(aliasesData[0]);
+      }
+      
+      console.log('📧 Aliases carregados:', aliasesData);
+    } catch (error) {
+      console.error('Erro ao carregar aliases:', error);
+      // Se não conseguir carregar os aliases, usa array vazio
+      setAliases([]);
+    } finally {
+      setLoadingAliases(false);
     }
   }
 
@@ -111,6 +145,12 @@ export default function MessagingModal({
       return;
     }
 
+    // Verifica se tem alias para email
+    if (messageType === 'email' && aliases.length === 0) {
+      alert('Nenhum alias de email configurado. Configure aliases no Gmail antes de enviar.');
+      return;
+    }
+
     try {
       setLoading(true);
       const { googleSheetsService } = await import('../services/googleSheets');
@@ -126,6 +166,7 @@ export default function MessagingModal({
       console.log('📤 Enviando mensagens e atualizando status...');
       console.log('  Tipo:', messageType);
       console.log('  Candidatos:', candidateIdentifiers);
+      console.log('  Alias:', selectedAlias);
 
       // ✅ PRIMEIRO: Enviar as mensagens
       const sendResult = await googleSheetsService.sendMessages(
@@ -133,7 +174,8 @@ export default function MessagingModal({
         subject,
         content,
         candidateIdentifiers.map(c => c.id).join(','),
-        user?.email || 'admin'
+        user?.email || 'admin',
+        selectedAlias // ← Alias obrigatório para emails
       );
 
       if (!sendResult.success) {
@@ -206,6 +248,7 @@ export default function MessagingModal({
     setSelectedTemplate('');
     setSubject('');
     setContent('');
+    setSelectedAlias(aliases[0] || ''); // Reseta para o primeiro alias
     onClose();
   }
 
@@ -280,6 +323,40 @@ export default function MessagingModal({
             </div>
           </div>
 
+          {/* Seletor de Alias - Aparece apenas para emails */}
+          {messageType === 'email' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Remetente (Alias) *
+              </label>
+              {loadingAliases ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Carregando aliases...
+                </div>
+              ) : aliases.length > 0 ? (
+                <select
+                  value={selectedAlias}
+                  onChange={(e) => setSelectedAlias(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {aliases.map((alias) => (
+                    <option key={alias} value={alias}>
+                      {alias}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+                  Nenhum alias configurado no Gmail. Configure aliases antes de enviar emails.
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mt-2">
+                Email que aparecerá como remetente da mensagem
+              </p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Template de Mensagem
@@ -347,7 +424,12 @@ export default function MessagingModal({
           </button>
           <button
             onClick={handleSend}
-            disabled={loading || !content.trim() || (messageType === 'email' && !subject.trim())}
+            disabled={
+              loading || 
+              !content.trim() || 
+              (messageType === 'email' && !subject.trim()) ||
+              (messageType === 'email' && aliases.length === 0) // Desabilita se não tiver aliases
+            }
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {loading ? (
