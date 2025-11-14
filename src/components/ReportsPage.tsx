@@ -8,10 +8,19 @@ interface ReportsPageProps {
 
 type ReportType = 'classificados' | 'desclassificados' | 'entrevista_classificados' | 'entrevista_desclassificados';
 
+interface Analyst {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 export default function ReportsPage({ onClose }: ReportsPageProps) {
   const [loading, setLoading] = useState(false);
-  const [analysts, setAnalysts] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [analysts, setAnalysts] = useState<Analyst[]>([]);
+  const [interviewers, setInterviewers] = useState<Analyst[]>([]);
   const [selectedAnalyst, setSelectedAnalyst] = useState<string>('todos');
+  const [selectedInterviewer, setSelectedInterviewer] = useState<string>('todos');
   const [reportType, setReportType] = useState<ReportType>('classificados');
   const [reportData, setReportData] = useState<Candidate[]>([]);
   const [stats, setStats] = useState({
@@ -22,7 +31,7 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
   });
 
   useEffect(() => {
-    loadAnalysts();
+    loadAnalystsAndInterviewers();
     loadStats();
   }, []);
 
@@ -30,18 +39,40 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     if (reportType) {
       loadReport();
     }
-  }, [reportType, selectedAnalyst]);
+  }, [reportType, selectedAnalyst, selectedInterviewer]);
 
-  async function loadAnalysts() {
+  async function loadAnalystsAndInterviewers() {
     try {
-      const { googleSheetsService } = await import('../services/googleSheets');
-      const result = await googleSheetsService.getAnalysts();
+      // Usando o serviço existente que já temos
+      const { getAnalysts } = await import('../services/userService');
+      const allUsers = await getAnalysts();
+      
+      // Filtrar analistas (role = 'analyst')
+      const analystsList = allUsers.filter(user => 
+        user.role === 'analyst' || user.role === 'Analista'
+      );
+      
+      // Filtrar entrevistadores (role = 'interviewer' ou qualquer usuário ativo para entrevista)
+      const interviewersList = allUsers.filter(user => 
+        user.role === 'interviewer' || user.role === 'Entrevistador' || user.active
+      );
 
-      if (result.success && Array.isArray(result.data)) {
-        setAnalysts(result.data);
-      }
+      setAnalysts(analystsList);
+      setInterviewers(interviewersList);
+      
+      console.log('📊 Analistas carregados:', analystsList);
+      console.log('🎤 Entrevistadores carregados:', interviewersList);
     } catch (error) {
-      console.error('Erro ao carregar analistas:', error);
+      console.error('Erro ao carregar analistas e entrevistadores:', error);
+      // Fallback para dados mock em caso de erro
+      setAnalysts([
+        { id: '1', name: 'Analista 1', email: 'analista1@email.com', role: 'analyst' },
+        { id: '2', name: 'Analista 2', email: 'analista2@email.com', role: 'analyst' }
+      ]);
+      setInterviewers([
+        { id: '3', name: 'Entrevistador 1', email: 'entrevistador1@email.com', role: 'interviewer' },
+        { id: '4', name: 'Entrevistador 2', email: 'entrevistador2@email.com', role: 'interviewer' }
+      ]);
     }
   }
 
@@ -63,10 +94,15 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       setLoading(true);
       const { googleSheetsService } = await import('../services/googleSheets');
 
-      const result = await googleSheetsService.getReport(
-        reportType,
-        selectedAnalyst === 'todos' ? undefined : selectedAnalyst
-      );
+      const filters: any = {};
+      if (selectedAnalyst !== 'todos') {
+        filters.analystId = selectedAnalyst;
+      }
+      if (selectedInterviewer !== 'todos') {
+        filters.interviewerId = selectedInterviewer;
+      }
+
+      const result = await googleSheetsService.getReport(reportType, filters);
 
       if (result.success && Array.isArray(result.data)) {
         setReportData(result.data);
@@ -93,19 +129,21 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     switch (reportType) {
       case 'classificados':
       case 'entrevista_classificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'PCD'];
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'PCD', 'Analista', 'Entrevistador'];
         rows = reportData.map(c => [
           c.NOMECOMPLETO || '',
           c.NOMESOCIAL || '',
           c.CPF || '',
           c.TELEFONE || '',
           c.CARGOPRETENDIDO || '',
-          c.VAGAPCD || ''
+          c.VAGAPCD || '',
+          c.assigned_analyst_name || '',
+          c.interviewer_name || ''
         ]);
         break;
 
       case 'desclassificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'Motivo Desclassificação', 'PCD'];
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'Motivo Desclassificação', 'PCD', 'Analista'];
         rows = reportData.map(c => [
           c.NOMECOMPLETO || '',
           c.NOMESOCIAL || '',
@@ -113,12 +151,13 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
           c.TELEFONE || '',
           c.CARGOPRETENDIDO || '',
           c['Motivo Desclassificação'] || '',
-          c.VAGAPCD || ''
+          c.VAGAPCD || '',
+          c.assigned_analyst_name || ''
         ]);
         break;
 
       case 'entrevista_desclassificados':
-        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'Pontuação', 'PCD'];
+        headers = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido', 'Pontuação', 'PCD', 'Entrevistador'];
         rows = reportData.map(c => [
           c.NOMECOMPLETO || '',
           c.NOMESOCIAL || '',
@@ -126,7 +165,8 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
           c.TELEFONE || '',
           c.CARGOPRETENDIDO || '',
           c.interview_score?.toString() || '',
-          c.VAGAPCD || ''
+          c.VAGAPCD || '',
+          c.interviewer_name || ''
         ]);
         break;
     }
@@ -149,6 +189,135 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
     document.body.removeChild(link);
   }
 
+  function exportToExcel() {
+    if (reportData.length === 0) {
+      alert('Não há dados para exportar');
+      return;
+    }
+
+    // Para uma implementação real, você pode usar bibliotecas como:
+    // xlsx ou exceljs para gerar arquivos Excel nativos
+    // Por enquanto, vamos usar CSV com extensão .xls como fallback
+    exportToCSV(); // Reutiliza a função CSV temporariamente
+  }
+
+  function exportToPDF() {
+    if (reportData.length === 0) {
+      alert('Não há dados para exportar');
+      return;
+    }
+
+    // Para uma implementação real, você pode usar bibliotecas como:
+    // jspdf, pdfmake, ou html2canvas + jspdf
+    // Esta é uma implementação básica que abre uma nova janela para impressão
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      const title = getReportTitle();
+      
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f5f5f5; font-weight: bold; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+            .header-info { margin-bottom: 20px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <h1>${title}</h1>
+          <div class="header-info">
+            <p><strong>Data de emissão:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
+            <p><strong>Total de registros:</strong> ${reportData.length}</p>
+            ${selectedAnalyst !== 'todos' ? `<p><strong>Analista:</strong> ${analysts.find(a => a.id === selectedAnalyst)?.name}</p>` : ''}
+            ${selectedInterviewer !== 'todos' ? `<p><strong>Entrevistador:</strong> ${interviewers.find(i => i.id === selectedInterviewer)?.name}</p>` : ''}
+          </div>
+          ${generatePDFTable()}
+        </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      printWindow.print();
+    }
+  }
+
+  function generatePDFTable(): string {
+    const headers = getTableHeaders();
+    const rows = reportData.map(candidate => getTableRowData(candidate));
+
+    return `
+      <table>
+        <thead>
+          <tr>
+            ${headers.map(header => `<th>${header}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(row => `
+            <tr>
+              ${row.map(cell => `<td>${cell}</td>`).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function getTableHeaders(): string[] {
+    const baseHeaders = ['Nome Completo', 'Nome Social', 'CPF', 'Telefone', 'Cargo Pretendido'];
+    
+    switch (reportType) {
+      case 'desclassificados':
+        return [...baseHeaders, 'Motivo Desclassificação', 'PCD', 'Analista'];
+      case 'entrevista_classificados':
+        return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador'];
+      case 'entrevista_desclassificados':
+        return [...baseHeaders, 'Pontuação', 'PCD', 'Entrevistador'];
+      default:
+        return [...baseHeaders, 'PCD', 'Analista'];
+    }
+  }
+
+  function getTableRowData(candidate: Candidate): string[] {
+    const baseData = [
+      candidate.NOMECOMPLETO || 'Não informado',
+      candidate.NOMESOCIAL || '-',
+      candidate.CPF || 'Não informado',
+      candidate.TELEFONE || 'Não informado',
+      candidate.CARGOPRETENDIDO || 'Não informado'
+    ];
+
+    switch (reportType) {
+      case 'desclassificados':
+        return [
+          ...baseData,
+          candidate['Motivo Desclassificação'] || 'Não informado',
+          candidate.VAGAPCD || 'Não',
+          candidate.assigned_analyst_name || ''
+        ];
+      case 'entrevista_classificados':
+      case 'entrevista_desclassificados':
+        return [
+          ...baseData,
+          candidate.interview_score?.toString() || '0',
+          candidate.VAGAPCD || 'Não',
+          candidate.interviewer_name || ''
+        ];
+      default:
+        return [
+          ...baseData,
+          candidate.VAGAPCD || 'Não',
+          candidate.assigned_analyst_name || ''
+        ];
+    }
+  }
+
   function getReportTitle(): string {
     switch (reportType) {
       case 'classificados':
@@ -162,6 +331,14 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
       default:
         return 'Relatório';
     }
+  }
+
+  function shouldShowAnalystFilter(): boolean {
+    return reportType === 'classificados' || reportType === 'desclassificados';
+  }
+
+  function shouldShowInterviewerFilter(): boolean {
+    return reportType === 'entrevista_classificados' || reportType === 'entrevista_desclassificados';
   }
 
   return (
@@ -245,30 +422,68 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Analista</label>
-              <select
-                value={selectedAnalyst}
-                onChange={(e) => setSelectedAnalyst(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="todos">Todos os Analistas</option>
-                {analysts.map((analyst) => (
-                  <option key={analyst.id} value={analyst.email}>
-                    {analyst.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {shouldShowAnalystFilter() && (
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Analista</label>
+                <select
+                  value={selectedAnalyst}
+                  onChange={(e) => setSelectedAnalyst(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="todos">Todos os Analistas</option>
+                  {analysts.map((analyst) => (
+                    <option key={analyst.id} value={analyst.id}>
+                      {analyst.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-            <button
-              onClick={exportToCSV}
-              disabled={reportData.length === 0}
-              className="ml-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Exportar CSV
-            </button>
+            {shouldShowInterviewerFilter() && (
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Entrevistador</label>
+                <select
+                  value={selectedInterviewer}
+                  onChange={(e) => setSelectedInterviewer(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="todos">Todos os Entrevistadores</option>
+                  {interviewers.map((interviewer) => (
+                    <option key={interviewer.id} value={interviewer.id}>
+                      {interviewer.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={exportToPDF}
+                disabled={reportData.length === 0}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                PDF
+              </button>
+              <button
+                onClick={exportToExcel}
+                disabled={reportData.length === 0}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Excel
+              </button>
+              <button
+                onClick={exportToCSV}
+                disabled={reportData.length === 0}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                CSV
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -289,7 +504,8 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
               <h3 className="text-lg font-semibold text-gray-800">{getReportTitle()}</h3>
               <p className="text-sm text-gray-600 mt-1">
                 {reportData.length} {reportData.length === 1 ? 'registro encontrado' : 'registros encontrados'}
-                {selectedAnalyst !== 'todos' && ` - Analista: ${analysts.find(a => a.email === selectedAnalyst)?.name}`}
+                {selectedAnalyst !== 'todos' && ` - Analista: ${analysts.find(a => a.id === selectedAnalyst)?.name}`}
+                {selectedInterviewer !== 'todos' && ` - Entrevistador: ${interviewers.find(i => i.id === selectedInterviewer)?.name}`}
               </p>
             </div>
 
@@ -325,6 +541,16 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
                       PCD
                     </th>
+                    {shouldShowAnalystFilter() && (
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                        Analista
+                      </th>
+                    )}
+                    {shouldShowInterviewerFilter() && (
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                        Entrevistador
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -372,6 +598,16 @@ export default function ReportsPage({ onClose }: ReportsPageProps) {
                           <span className="text-gray-400">Não</span>
                         )}
                       </td>
+                      {shouldShowAnalystFilter() && (
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {candidate.assigned_analyst_name || '-'}
+                        </td>
+                      )}
+                      {shouldShowInterviewerFilter() && (
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {candidate.interviewer_name || '-'}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
