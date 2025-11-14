@@ -86,42 +86,80 @@ export async function getAnalysts(): Promise<User[]> {
   try {
     console.log('🔍 Buscando analistas...');
     const result = await sheetsService.fetchData('getAnalysts');
-    console.log('📥 Resultado completo de getAnalysts:', result);
+    console.log('📥 Resultado completo de getAnalysts:', JSON.stringify(result, null, 2));
+
+    // Verificar se houve erro na requisição
+    if (!result) {
+      console.error('❌ Resultado vazio ou null');
+      return [];
+    }
+
+    if (result.success === false) {
+      console.error('❌ Erro retornado do servidor:', result.error);
+      return [];
+    }
 
     // CORREÇÃO: Verificar múltiplas estruturas possíveis
     let analysts = [];
-    
-    if (result.success && result.data && Array.isArray(result.data.analysts)) {
+
+    if (result.success && result.data && result.data.analysts && Array.isArray(result.data.analysts)) {
       // Estrutura: { success: true, data: { analysts: [...] } }
+      console.log('📦 Estrutura detectada: { success: true, data: { analysts: [...] } }');
       analysts = result.data.analysts;
-    } else if (result.success && Array.isArray(result.analysts)) {
+    } else if (result.success && result.data && Array.isArray(result.data)) {
+      // Estrutura: { success: true, data: [...] }
+      console.log('📦 Estrutura detectada: { success: true, data: [...] }');
+      analysts = result.data;
+    } else if (result.success && result.analysts && Array.isArray(result.analysts)) {
       // Estrutura: { success: true, analysts: [...] }
+      console.log('📦 Estrutura detectada: { success: true, analysts: [...] }');
       analysts = result.analysts;
-    } else if (Array.isArray(result.data)) {
+    } else if (result.data && result.data.analysts && Array.isArray(result.data.analysts)) {
+      // Estrutura: { data: { analysts: [...] } }
+      console.log('📦 Estrutura detectada: { data: { analysts: [...] } }');
+      analysts = result.data.analysts;
+    } else if (result.data && Array.isArray(result.data)) {
       // Estrutura: { data: [...] }
+      console.log('📦 Estrutura detectada: { data: [...] }');
       analysts = result.data;
     } else if (Array.isArray(result)) {
       // Estrutura: [...] (array direto)
+      console.log('📦 Estrutura detectada: [...] (array direto)');
       analysts = result;
     } else {
       console.warn('⚠️ Estrutura de dados inesperada:', result);
+      console.warn('⚠️ Tipo de result:', typeof result);
+      console.warn('⚠️ result.success:', result.success);
+      console.warn('⚠️ result.data:', result.data);
+      console.warn('⚠️ Verificar logs do Google Apps Script');
       analysts = [];
     }
 
     console.log('✅ Analistas extraídos:', analysts);
     console.log('📊 Total de analistas:', analysts.length);
 
+    if (analysts.length === 0) {
+      console.warn('⚠️ Nenhum analista encontrado. Verifique:');
+      console.warn('   1. Se há usuários com role "analista" na aba USUARIOS');
+      console.warn('   2. Se o Google Apps Script está retornando dados corretos');
+      console.warn('   3. Os logs do Google Apps Script para mais detalhes');
+    }
+
     // Mapear para o formato User
-    return analysts.map((analyst: any) => ({
+    const mappedAnalysts = analysts.map((analyst: any) => ({
       id: analyst.id || analyst.Email || analyst.email,
       email: analyst.Email || analyst.email,
       name: analyst.Nome || analyst.name || 'Nome não informado',
-      role: analyst.Role || analyst.role || 'analyst',
+      role: analyst.Role || analyst.role || 'analista',
       active: analyst.Ativo !== undefined ? analyst.Ativo : (analyst.active !== false)
     }));
 
+    console.log('✅ Analistas mapeados:', mappedAnalysts);
+    return mappedAnalysts;
+
   } catch (error) {
     console.error('❌ Erro ao buscar analistas:', error);
+    console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'N/A');
     // Retornar array vazio em caso de erro para não quebrar a UI
     return [];
   }
