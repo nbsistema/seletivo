@@ -48,6 +48,7 @@ export default function MessagingModal({
   const [aliases, setAliases] = useState<string[]>([]);
   const [selectedAlias, setSelectedAlias] = useState<string>('');
   const [loadingAliases, setLoadingAliases] = useState(false);
+  const [previewContent, setPreviewContent] = useState<string>(''); // ✅ NOVO: preview personalizado
 
   useEffect(() => {
     if (isOpen) {
@@ -57,6 +58,11 @@ export default function MessagingModal({
       }
     }
   }, [isOpen, messageType]);
+
+  // ✅ NOVO: Atualizar preview quando conteúdo ou candidatos mudarem
+  useEffect(() => {
+    updatePreview();
+  }, [content, candidates]);
 
   async function loadTemplates() {
     try {
@@ -77,44 +83,42 @@ export default function MessagingModal({
   }
 
   async function loadAliases() {
-  try {
-    setLoadingAliases(true);
-    const { googleSheetsService } = await import('../services/googleSheets');
-    const result = await googleSheetsService.getEmailAliases();
+    try {
+      setLoadingAliases(true);
+      const { googleSheetsService } = await import('../services/googleSheets');
+      const result = await googleSheetsService.getEmailAliases();
 
-    if (!result.success) {
-      console.warn('⚠️ Não foi possível carregar aliases, usando padrão...');
-      // Usa um alias padrão fixo como fallback
-      const defaultAlias = 'seletivoinstitutoacqua@gmail.com'; // ← Altere para seu alias padrão
+      if (!result.success) {
+        console.warn('⚠️ Não foi possível carregar aliases, usando padrão...');
+        const defaultAlias = 'seletivoinstitutoacqua@gmail.com';
+        setAliases([defaultAlias]);
+        setSelectedAlias(defaultAlias);
+        return;
+      }
+
+      const aliasesData = result.data || [];
+      
+      if (aliasesData.length === 0) {
+        console.warn('⚠️ Nenhum alias encontrado, usando padrão...');
+        const defaultAlias = 'seletivoinstitutoacqua@gmail.com';
+        setAliases([defaultAlias]);
+        setSelectedAlias(defaultAlias);
+        return;
+      }
+      
+      setAliases(aliasesData);
+      setSelectedAlias(aliasesData[0]);
+      
+      console.log('📧 Aliases carregados:', aliasesData);
+    } catch (error) {
+      console.error('Erro ao carregar aliases, usando padrão:', error);
+      const defaultAlias = 'seletivoinstitutoacqua@gmail.com';
       setAliases([defaultAlias]);
       setSelectedAlias(defaultAlias);
-      return;
+    } finally {
+      setLoadingAliases(false);
     }
-
-    const aliasesData = result.data || [];
-    
-    if (aliasesData.length === 0) {
-      console.warn('⚠️ Nenhum alias encontrado, usando padrão...');
-      const defaultAlias = 'seletivoinstitutoacqua@gmail.com'; // ← Altere para seu alias padrão
-      setAliases([defaultAlias]);
-      setSelectedAlias(defaultAlias);
-      return;
-    }
-    
-    setAliases(aliasesData);
-    setSelectedAlias(aliasesData[0]);
-    
-    console.log('📧 Aliases carregados:', aliasesData);
-  } catch (error) {
-    console.error('Erro ao carregar aliases, usando padrão:', error);
-    // Fallback para alias padrão
-    const defaultAlias = 'seletivoinstitutoacqua@gmail.com'; // ← Altere para seu alias padrão
-    setAliases([defaultAlias]);
-    setSelectedAlias(defaultAlias);
-  } finally {
-    setLoadingAliases(false);
   }
-}
 
   function handleTemplateSelect(templateId: string) {
     setSelectedTemplate(templateId);
@@ -146,6 +150,17 @@ export default function MessagingModal({
       .replace(/\[AREA\]/g, candidate.area_atuacao_pretendida || 'área de interesse');
   }
 
+  // ✅ NOVO: Atualizar preview do conteúdo personalizado
+  function updatePreview() {
+    if (candidates.length > 0 && content) {
+      const firstCandidate = candidates[0];
+      const preview = personalizeMessage(content, firstCandidate);
+      setPreviewContent(preview);
+    } else {
+      setPreviewContent('');
+    }
+  }
+
   async function handleSend() {
     if (!content.trim()) {
       alert('Por favor, preencha o conteúdo da mensagem');
@@ -157,7 +172,6 @@ export default function MessagingModal({
       return;
     }
 
-    // Verifica se tem alias para email
     if (messageType === 'email' && aliases.length === 0) {
       alert('Nenhum alias de email configurado. Configure aliases no Gmail antes de enviar.');
       return;
@@ -167,27 +181,37 @@ export default function MessagingModal({
       setLoading(true);
       const { googleSheetsService } = await import('../services/googleSheets');
 
-      // ✅ Coletar IDs/CPFs dos candidatos para atualização
-      const candidateIdentifiers = candidates.map(c => ({
-        id: c.id,
-        registration_number: c.registration_number,
-        CPF: c.CPF,
-        nome: c.nome_completo || c.full_name
+      // ✅ PERSONALIZAR mensagem para cada candidato ANTES do envio
+      const personalizedMessages = candidates.map(candidate => ({
+        candidateId: candidate.id,
+        registration_number: candidate.registration_number,
+        CPF: candidate.CPF,
+        nome: candidate.nome_completo || candidate.full_name,
+        email: candidate.email,
+        telefone: candidate.telefone,
+        // ✅ Mensagem personalizada para cada candidato
+        personalizedSubject: messageType === 'email' ? personalizeMessage(subject, candidate) : '',
+        personalizedContent: personalizeMessage(content, candidate)
       }));
 
-      console.log('📤 Enviando mensagens e atualizando status...');
+      console.log('📤 Enviando mensagens personalizadas...');
       console.log('  Tipo:', messageType);
-      console.log('  Candidatos:', candidateIdentifiers);
+      console.log('  Candidatos:', personalizedMessages.length);
       console.log('  Alias:', selectedAlias);
 
-      // ✅ PRIMEIRO: Enviar as mensagens
+      // ✅ Enviar as mensagens personalizadas
       const sendResult = await googleSheetsService.sendMessages(
         messageType,
-        subject,
-        content,
-        candidateIdentifiers.map(c => c.id).join(','),
+        subject, // Assunto base (será personalizado no serviço)
+        content, // Conteúdo base (será personalizado no serviço)
+        personalizedMessages.map(c => c.candidateId).join(','),
         user?.email || 'admin',
-        selectedAlias // ← Alias obrigatório para emails
+        selectedAlias,
+        // ✅ Passar os dados para personalização
+        {
+          candidates: personalizedMessages,
+          personalizarMensagens: true // Flag para indicar que deve personalizar
+        }
       );
 
       if (!sendResult.success) {
@@ -202,24 +226,22 @@ export default function MessagingModal({
       console.log('✅ Mensagens enviadas:', successCount);
       console.log('❌ Falhas:', failCount);
 
-      // ✅ SEGUNDO: Atualizar o status de envio na planilha
+      // ✅ Atualizar o status de envio na planilha
       if (successCount > 0) {
         console.log('🔄 Atualizando status de envio na planilha...');
         
-        // Filtrar apenas os candidatos que receberam mensagens com sucesso
-        const successfulCandidates = candidateIdentifiers.filter(candidate => {
-          const result = results.find((r: any) => r.candidateId === candidate.id);
+        const successfulCandidates = personalizedMessages.filter(candidate => {
+          const result = results.find((r: any) => r.candidateId === candidate.candidateId);
           return result && result.success;
         });
 
         if (successfulCandidates.length > 0) {
           console.log('📝 Candidatos para marcar como enviado:', successfulCandidates);
 
-          // ✅ ATUALIZAR O CAMPO email_sent OU sms_sent
           const updateResult = await googleSheetsService.updateMessageStatus(
-            successfulCandidates.map(c => c.registration_number || c.CPF || c.id),
+            successfulCandidates.map(c => c.registration_number || c.CPF || c.candidateId),
             messageType,
-            'Sim' // ✅ Valor que será gravado na planilha
+            'Sim'
           );
 
           if (!updateResult.success) {
@@ -230,7 +252,7 @@ export default function MessagingModal({
         }
       }
 
-      // ✅ MOSTRAR RESULTADO PARA O USUÁRIO
+      // ✅ MOSTRAR RESULTADO
       let message = `${successCount} mensagem(ns) enviada(s) com sucesso`;
 
       if (failCount > 0) {
@@ -244,7 +266,7 @@ export default function MessagingModal({
       alert(message);
 
       if (successCount > 0) {
-        onMessagesSent(); // ✅ Isso vai recarregar a lista e mostrar os status atualizados
+        onMessagesSent();
         handleClose();
       }
     } catch (error) {
@@ -260,7 +282,8 @@ export default function MessagingModal({
     setSelectedTemplate('');
     setSubject('');
     setContent('');
-    setSelectedAlias(aliases[0] || ''); // Reseta para o primeiro alias
+    setPreviewContent(''); // ✅ Limpar preview
+    setSelectedAlias(aliases[0] || '');
     onClose();
   }
 
@@ -335,7 +358,6 @@ export default function MessagingModal({
             </div>
           </div>
 
-          {/* Seletor de Alias - Aparece apenas para emails */}
           {messageType === 'email' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -406,6 +428,13 @@ export default function MessagingModal({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Digite o assunto do email"
               />
+              {/* ✅ NOVO: Preview do assunto personalizado */}
+              {candidates.length > 0 && subject && (
+                <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
+                  <span className="text-gray-600">Preview: </span>
+                  {personalizeMessage(subject, candidates[0])}
+                </div>
+              )}
             </div>
           )}
 
@@ -420,8 +449,21 @@ export default function MessagingModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Digite a mensagem..."
             />
+            
+            {/* ✅ NOVO: Preview do conteúdo personalizado */}
+            {previewContent && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Preview (primeiro candidato):
+                </label>
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm whitespace-pre-wrap">
+                  {previewContent}
+                </div>
+              </div>
+            )}
+            
             <p className="text-xs text-gray-500 mt-2">
-              Você pode usar as variáveis: [NOME], [CARGO], [AREA]
+              Você pode usar as variáveis: [NOME], [CARGO], [AREA] - Elas serão substituídas automaticamente
             </p>
           </div>
         </div>
@@ -440,7 +482,7 @@ export default function MessagingModal({
               loading || 
               !content.trim() || 
               (messageType === 'email' && !subject.trim()) ||
-              (messageType === 'email' && aliases.length === 0) // Desabilita se não tiver aliases
+              (messageType === 'email' && aliases.length === 0)
             }
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
