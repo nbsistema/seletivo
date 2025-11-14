@@ -9,6 +9,7 @@ const SHEET_CANDIDATOS = 'CANDIDATOS';
 const SHEET_MOTIVOS = 'MOTIVOS';
 const SHEET_MENSAGENS = 'MENSAGENS';
 const SHEET_TEMPLATES = 'TEMPLATES';
+const SHEET_ALIASES = 'ALIASES';
 
 const HEADER_ROWS = 1;
 const COL_ID_PRIMARY = 'CPF';
@@ -169,6 +170,7 @@ function handleRequest(e) {
       'saveInterviewEvaluation': () => saveInterviewEvaluation(params),
       'getReportStats': () => getReportStats(params),
       'getReport': () => getReport(params),
+      'getEmailAliases': () => getEmailAliases(params),
       'test': () => testConnection()
     };
 
@@ -552,6 +554,50 @@ function initTemplatesSheet() {
   return sheet;
 }
 
+// ============================================
+// ALIASES DE EMAIL
+// ============================================
+
+function initAliasesSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_ALIASES);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_ALIASES);
+    sheet.getRange('A1:B1').setValues([['Alias', 'Ativo']]);
+
+    const defaultAlias = [['seletivoinstitutoacqua@gmail.com', 'Sim']];
+    sheet.getRange(2, 1, defaultAlias.length, 2).setValues(defaultAlias);
+    sheet.getRange('A1:B1').setFontWeight('bold').setBackground('#4285f4').setFontColor('#ffffff');
+  }
+
+  return sheet;
+}
+
+function getEmailAliases(params) {
+  try {
+    Logger.log('📧 Buscando aliases de email');
+
+    const sheet = initAliasesSheet();
+    const data = sheet.getDataRange().getValues();
+    const aliases = [];
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][1] === 'Sim') {
+        aliases.push(data[i][0]);
+      }
+    }
+
+    Logger.log('✅ Aliases encontrados: ' + aliases.length);
+    Logger.log('   - Aliases: ' + aliases.join(', '));
+
+    return aliases;
+  } catch (error) {
+    Logger.log('❌ Erro ao buscar aliases: ' + error.toString());
+    throw error;
+  }
+}
+
 function getMessageTemplates(params) {
   const sheet = initTemplatesSheet();
   const data = sheet.getDataRange().getValues();
@@ -641,10 +687,17 @@ function _sendSmsTwilio_(to, body){
   }
 }
 
-function _sendEmailGmail_(to, subject, body){
+function _sendEmailGmail_(to, subject, body, fromAlias){
   try {
     Logger.log('📧 Enviando email: ' + to);
-    GmailApp.sendEmail(to, subject, body);
+    Logger.log('📧 Alias remetente: ' + (fromAlias || 'padrão'));
+
+    const options = {};
+    if (fromAlias) {
+      options.from = fromAlias;
+    }
+
+    GmailApp.sendEmail(to, subject, body, options);
     Logger.log('✅ Email enviado');
     return { ok: true };
   } catch (e) {
@@ -687,6 +740,7 @@ function sendMessages(params) {
   const content = params.content || '';
   const candidateIds = params.candidateIds || '';
   const sentBy = params.sentBy || 'system';
+  const fromAlias = params.fromAlias || '';
 
   if (!content) {
     throw new Error('Conteúdo da mensagem é obrigatório');
@@ -740,7 +794,7 @@ function sendMessages(params) {
       const personalizedSubject = _applyTemplate_(subject, candidate);
       const personalizedContent = _applyTemplate_(content, candidate);
 
-      result = _sendEmailGmail_(recipient, personalizedSubject, personalizedContent);
+      result = _sendEmailGmail_(recipient, personalizedSubject, personalizedContent, fromAlias);
 
       logMessage({
         registrationNumber: cpf,
@@ -871,11 +925,12 @@ function updateMessageStatus(params) {
   try {
     Logger.log('📝 updateMessageStatus iniciado');
 
-    const registrationNumber = params.registrationNumber;
+    const registrationNumbers = params.registrationNumbers || params.registrationNumber;
     const messageType = params.messageType;
+    const status = params.status || 'Sim';
 
-    if (!registrationNumber) {
-      throw new Error('Número de inscrição é obrigatório');
+    if (!registrationNumbers) {
+      throw new Error('Número(s) de inscrição é obrigatório');
     }
 
     if (!messageType || (messageType !== 'email' && messageType !== 'sms')) {
@@ -889,8 +944,6 @@ function updateMessageStatus(params) {
 
     const headers = _getHeaders_(sh);
     const col = _colMap_(headers);
-    const cpfCol = col['CPF'];
-    const regNumCol = col['Número de Inscrição'];
 
     let targetCol;
     if (messageType === 'email') {
@@ -904,32 +957,43 @@ function updateMessageStatus(params) {
       throw new Error('Coluna ' + colName + ' não encontrada. Execute addStatusColumnIfNotExists primeiro.');
     }
 
+    const candidatesList = String(registrationNumbers).split(',').map(s => s.trim()).filter(Boolean);
     const idx = _getIndex_(sh, headers);
-    const searchKey = String(registrationNumber).trim();
-    let row = idx[searchKey];
+    let updatedCount = 0;
 
-    if (!row) {
-      const newIdx = _buildIndex_(sh, headers);
-      const rev = _getRev_();
-      CacheService.getDocumentCache().put(`${IDX_CACHE_KEY}${rev}`, JSON.stringify(newIdx), CACHE_TTL_SEC);
-      row = newIdx[searchKey];
+    for (const regNumber of candidatesList) {
+      const searchKey = String(regNumber).trim();
+      let row = idx[searchKey];
+
+      if (!row) {
+        const newIdx = _buildIndex_(sh, headers);
+        const rev = _getRev_();
+        CacheService.getDocumentCache().put(`${IDX_CACHE_KEY}${rev}`, JSON.stringify(newIdx), CACHE_TTL_SEC);
+        row = newIdx[searchKey];
+      }
+
+      if (!row) {
+        Logger.log('⚠️ Candidato não encontrado: ' + regNumber);
+        continue;
+      }
+
+      sh.getRange(row, targetCol + 1).setValue(status);
+      updatedCount++;
+      Logger.log('✅ Status atualizado: ' + regNumber + ' - ' + messageType + ' = ' + status);
     }
 
-    if (!row) {
-      throw new Error('Candidato não encontrado: ' + registrationNumber);
+    if (updatedCount > 0) {
+      _bumpRev_();
     }
 
-    sh.getRange(row, targetCol + 1).setValue('Sim');
-    _bumpRev_();
-
-    Logger.log('✅ Status de mensagem atualizado: ' + registrationNumber + ' - ' + messageType + ' = Sim');
+    Logger.log('✅ Total de status atualizados: ' + updatedCount);
 
     return {
       success: true,
-      message: 'Status de mensagem atualizado com sucesso',
-      registrationNumber: registrationNumber,
+      message: updatedCount + ' status de mensagem(ns) atualizado(s) com sucesso',
+      updatedCount: updatedCount,
       messageType: messageType,
-      status: 'Sim'
+      status: status
     };
 
   } catch (error) {

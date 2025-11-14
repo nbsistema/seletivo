@@ -209,7 +209,8 @@ export const googleSheetsService = {
     subject: string,
     content: string,
     candidateIds: string,
-    sentBy: string
+    sentBy: string,
+    fromAlias?: string
   ): Promise<GoogleSheetsResponse> {
     try {
       console.log('📤 Enviando requisição para Google Apps Script');
@@ -222,7 +223,8 @@ export const googleSheetsService = {
         subject: subject || '',
         content,
         candidateIds,
-        sentBy
+        sentBy,
+        ...(fromAlias && { fromAlias })
       });
 
       const url = `${SCRIPT_URL}?${params.toString()}`;
@@ -256,14 +258,16 @@ export const googleSheetsService = {
   },
 
   async updateMessageStatus(
-    registrationNumber: string,
-    messageType: 'email' | 'sms'
+    registrationNumbers: string[],
+    messageType: 'email' | 'sms',
+    status: string
   ): Promise<GoogleSheetsResponse> {
     try {
       const params = new URLSearchParams({
         action: 'updateMessageStatus',
-        registrationNumber,
-        messageType
+        registrationNumbers: registrationNumbers.join(','),
+        messageType,
+        status
       });
 
       const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
@@ -509,6 +513,32 @@ export const googleSheetsService = {
     } catch (error) {
       console.error('Erro ao buscar relatório:', error);
       return { success: false, error: 'Erro ao buscar relatório' };
+    }
+  },
+
+  async getEmailAliases(): Promise<GoogleSheetsResponse> {
+    try {
+      const params = new URLSearchParams({
+        action: 'getEmailAliases'
+      });
+
+      const response = await fetch(`${SCRIPT_URL}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar aliases de email:', error);
+      return { success: false, error: 'Erro ao buscar aliases de email' };
     }
   }
 };
