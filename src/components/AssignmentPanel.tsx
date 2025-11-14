@@ -198,7 +198,7 @@ function AssignmentPanel({ adminId, onAssignmentComplete }: AssignmentPanelProps
                       <div className="flex-1">
                         <div className="font-semibold text-gray-800">{candidate.name}</div>
                         <div className="text-sm text-gray-600 mt-1">
-                          Inscrição: {candidate.registration_number} • Área: {candidate.area}
+                          CPF: {candidate.registration_number} • Área: {candidate.AREAATUACAO}
                         </div>
                       </div>
                     </div>
