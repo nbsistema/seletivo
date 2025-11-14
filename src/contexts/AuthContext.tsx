@@ -16,6 +16,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAdmin: () => boolean;
   isAnalyst: () => boolean;
+  isInterviewer: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -232,13 +233,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function isAnalyst(): boolean {
     return user?.role === 'analista';
   }
-  
-   function isAnalyst(): boolean {
+
+  function isInterviewer(): boolean {
     return user?.role === 'entrevistador';
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isAnalyst }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isAnalyst, isInterviewer }}>
       {children}
     </AuthContext.Provider>
   );

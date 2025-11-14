@@ -112,22 +112,19 @@ class GoogleSheetsService {
     }
 
     return candidatesArray.map((candidate: any) => {
-      // Normaliza os dados da planilha
-      const normalized = {
+      const normalized: any = {
         ...candidate,
         id: candidate.CPF || candidate.id,
         registration_number: candidate.CPF || candidate.registration_number,
         name: candidate.NOMECOMPLETO || candidate.name,
 
-        // Normaliza status (Status vs status)
-        status: candidate.Status || candidate.status || 'pendente',
+        status: (candidate.Status || candidate.status || 'pendente').toLowerCase(),
+        Status: candidate.Status || candidate.status || 'pendente',
 
-        // Campos de alocação da planilha
         assigned_to: candidate.assigned_to || null,
         assigned_at: candidate.assigned_at || null,
         assigned_by: candidate.assigned_by || null,
 
-        // Timestamps da planilha
         created_at: candidate.DataCadastro || candidate.created_at || null,
         updated_at: candidate.updated_at || null,
       };

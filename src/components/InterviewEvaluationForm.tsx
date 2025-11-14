@@ -66,8 +66,8 @@ export default function InterviewEvaluationForm({
       setSaving(true);
       const { googleSheetsService } = await import('../services/googleSheets');
 
-      const evaluation: InterviewEvaluation = {
-        candidateId: candidate.registration_number,
+      const evaluation: any = {
+        registrationNumber: candidate.registration_number,
         formacao_adequada,
         graduacoes_competencias,
         descricao_processos,
@@ -80,8 +80,9 @@ export default function InterviewEvaluationForm({
         resolucao_conflitos,
         colaboracao_equipe,
         adaptacao_perfis,
-        impressao_perfil,
-        resultado,
+        interview_notes: impressao_perfil,
+        interview_result: resultado,
+        interview_score: scores.total,
         interviewerEmail: user?.email || '',
         completed_at: new Date().toISOString()
       };
