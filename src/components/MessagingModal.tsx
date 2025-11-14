@@ -77,32 +77,44 @@ export default function MessagingModal({
   }
 
   async function loadAliases() {
-    try {
-      setLoadingAliases(true);
-      const { googleSheetsService } = await import('../services/googleSheets');
-      const result = await googleSheetsService.getEmailAliases();
+  try {
+    setLoadingAliases(true);
+    const { googleSheetsService } = await import('../services/googleSheets');
+    const result = await googleSheetsService.getEmailAliases();
 
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao carregar aliases');
-      }
-
-      const aliasesData = result.data || [];
-      setAliases(aliasesData);
-      
-      // Seleciona o primeiro alias por padrão, se disponível
-      if (aliasesData.length > 0) {
-        setSelectedAlias(aliasesData[0]);
-      }
-      
-      console.log('📧 Aliases carregados:', aliasesData);
-    } catch (error) {
-      console.error('Erro ao carregar aliases:', error);
-      // Se não conseguir carregar os aliases, usa array vazio
-      setAliases([]);
-    } finally {
-      setLoadingAliases(false);
+    if (!result.success) {
+      console.warn('⚠️ Não foi possível carregar aliases, usando padrão...');
+      // Usa um alias padrão fixo como fallback
+      const defaultAlias = 'recrutamento@empresa.com'; // ← Altere para seu alias padrão
+      setAliases([defaultAlias]);
+      setSelectedAlias(defaultAlias);
+      return;
     }
+
+    const aliasesData = result.data || [];
+    
+    if (aliasesData.length === 0) {
+      console.warn('⚠️ Nenhum alias encontrado, usando padrão...');
+      const defaultAlias = 'recrutamento@empresa.com'; // ← Altere para seu alias padrão
+      setAliases([defaultAlias]);
+      setSelectedAlias(defaultAlias);
+      return;
+    }
+    
+    setAliases(aliasesData);
+    setSelectedAlias(aliasesData[0]);
+    
+    console.log('📧 Aliases carregados:', aliasesData);
+  } catch (error) {
+    console.error('Erro ao carregar aliases, usando padrão:', error);
+    // Fallback para alias padrão
+    const defaultAlias = 'recrutamento@empresa.com'; // ← Altere para seu alias padrão
+    setAliases([defaultAlias]);
+    setSelectedAlias(defaultAlias);
+  } finally {
+    setLoadingAliases(false);
   }
+}
 
   function handleTemplateSelect(templateId: string) {
     setSelectedTemplate(templateId);
