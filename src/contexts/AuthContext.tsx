@@ -75,31 +75,32 @@ class GoogleSheetsService {
     }
   }
 
-  async getUserByEmail(email: string): Promise<User | null> {
-    const result = await this.fetchData('getUserRole', { email });
-    console.log('📥 getUserByEmail - Resultado COMPLETO:', JSON.stringify(result, null, 2));
+ async getUserByEmail(email: string): Promise<User | null> {
+  const result = await this.fetchData('getUserRole', { email });
+  console.log('📥 getUserByEmail - Resultado COMPLETO:', JSON.stringify(result, null, 2));
 
-    if (result && result.success && !result.error) {
-      // Google Apps Script retorna direto: { email, nome, role, ativo, success }
-      const user = {
-        id: result.email,
-        email: result.email,
-        name: result.nome || result.name || result.email,
-        role: result.role,
-        active: result.ativo === true || result.ativo === 'TRUE',
-        password: ''
-      };
+  // 🔥 CORREÇÃO: Acessar os dados dentro de 'data'
+  if (result && result.success && result.data && !result.error) {
+    const userData = result.data;
+    
+    const user = {
+      id: userData.email || userData.id,
+      email: userData.email,
+      name: userData.name || userData.nome || userData.email,
+      role: userData.role,
+      active: userData.active === true || userData.active === 'TRUE' || userData.ativo === true || userData.ativo === 'TRUE',
+      password: ''
+    };
 
-      console.log('✅ getUserByEmail - User FINAL:', JSON.stringify(user, null, 2));
-      console.log('�� getUserByEmail - ROLE:', user.role, '(tipo:', typeof user.role, ')');
+    console.log('✅ getUserByEmail - User FINAL:', JSON.stringify(user, null, 2));
+    console.log('🎭 getUserByEmail - ROLE:', user.role, '(tipo:', typeof user.role, ')');
 
-      return user;
-    }
-
-    console.error('❌ getUserByEmail - Sem resultado válido ou erro:', result?.error);
-    return null;
+    return user;
   }
 
+  console.error('❌ getUserByEmail - Sem resultado válido ou erro:', result?.error);
+  return null;
+}
   async getUserById(id: string): Promise<User | null> {
     const result = await this.fetchData('getUserRole', { email: id });
     console.log('📥 getUserById - Resultado COMPLETO:', JSON.stringify(result, null, 2));
