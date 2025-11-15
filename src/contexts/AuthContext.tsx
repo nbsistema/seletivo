@@ -79,27 +79,24 @@ class GoogleSheetsService {
     const result = await this.fetchData('getUserRole', { email });
     console.log('📥 getUserByEmail - Resultado COMPLETO:', JSON.stringify(result, null, 2));
 
-    if (result && !result.error) {
-      // Google Apps Script retorna { success: true, data: {...} }
-      const userData = result.data || result;
-      console.log('📦 getUserByEmail - Dados extraídos:', JSON.stringify(userData, null, 2));
-
+    if (result && result.success && !result.error) {
+      // Google Apps Script retorna direto: { email, nome, role, ativo, success }
       const user = {
-        id: userData.email,
-        email: userData.email,
-        name: userData.name || userData.nome || userData.email,
-        role: userData.role,
-        active: true,
+        id: result.email,
+        email: result.email,
+        name: result.nome || result.name || result.email,
+        role: result.role,
+        active: result.ativo === true || result.ativo === 'TRUE',
         password: ''
       };
 
       console.log('✅ getUserByEmail - User FINAL:', JSON.stringify(user, null, 2));
-      console.log('🎭 getUserByEmail - ROLE:', user.role, '(tipo:', typeof user.role, ')');
+      console.log('�� getUserByEmail - ROLE:', user.role, '(tipo:', typeof user.role, ')');
 
       return user;
     }
 
-    console.error('❌ getUserByEmail - Sem resultado válido');
+    console.error('❌ getUserByEmail - Sem resultado válido ou erro:', result?.error);
     return null;
   }
 
@@ -107,17 +104,14 @@ class GoogleSheetsService {
     const result = await this.fetchData('getUserRole', { email: id });
     console.log('📥 getUserById - Resultado COMPLETO:', JSON.stringify(result, null, 2));
 
-    if (result && !result.error) {
-      // Google Apps Script retorna { success: true, data: {...} }
-      const userData = result.data || result;
-      console.log('📦 getUserById - Dados extraídos:', JSON.stringify(userData, null, 2));
-
+    if (result && result.success && !result.error) {
+      // Google Apps Script retorna direto: { email, nome, role, ativo, success }
       const user = {
-        id: userData.email,
-        email: userData.email,
-        name: userData.name || userData.nome || userData.email,
-        role: userData.role,
-        active: true
+        id: result.email,
+        email: result.email,
+        name: result.nome || result.name || result.email,
+        role: result.role,
+        active: result.ativo === true || result.ativo === 'TRUE'
       };
 
       console.log('✅ getUserById - User FINAL:', JSON.stringify(user, null, 2));
@@ -126,7 +120,7 @@ class GoogleSheetsService {
       return user;
     }
 
-    console.error('❌ getUserById - Sem resultado válido');
+    console.error('❌ getUserById - Sem resultado válido ou erro:', result?.error);
     return null;
   }
 }
