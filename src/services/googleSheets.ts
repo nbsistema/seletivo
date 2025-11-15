@@ -1,4 +1,4 @@
-const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
+const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '/.netlify/functions/google-sheets-proxy';
 
 interface GoogleSheetsResponse {
   success: boolean;
@@ -11,8 +11,11 @@ async function makeRequest(action: string, params: any = {}): Promise<GoogleShee
   try {
     const payload = {
       action,
-      data: params
+      ...params
     };
+
+    console.log('📤 [googleSheets] Enviando requisição:', action);
+    console.log('📦 [googleSheets] Payload:', payload);
 
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -23,14 +26,19 @@ async function makeRequest(action: string, params: any = {}): Promise<GoogleShee
       body: JSON.stringify(payload)
     });
 
+    console.log('📡 [googleSheets] Status da resposta:', response.status);
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      const errorText = await response.text();
+      console.error('❌ [googleSheets] Erro na resposta:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('✅ [googleSheets] Resposta recebida:', data);
     return data;
   } catch (error) {
-    console.error(`Erro na requisição ${action}:`, error);
+    console.error(`❌ [googleSheets] Erro na requisição ${action}:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Erro na requisição'

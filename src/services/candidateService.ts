@@ -47,7 +47,7 @@ class GoogleSheetsService {
   private scriptUrl: string;
 
   constructor() {
-    this.scriptUrl = import.meta.env.VITE_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwRZ7vLEm4n8iha2GJSnIfCEjhHejRLme-OkIkp_qu6/dev';
+    this.scriptUrl = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '/.netlify/functions/google-sheets-proxy';
   }
 
   async fetchData(action: string, data?: any): Promise<any> {
@@ -56,38 +56,36 @@ class GoogleSheetsService {
         throw new Error('URL do Google Script não configurada. Verifique o arquivo .env');
       }
 
-      const url = new URL(this.scriptUrl);
-      url.searchParams.append('action', action);
+      const payload = {
+        action,
+        ...data
+      };
 
-      if (data) {
-        Object.keys(data).forEach(key => {
-          url.searchParams.append(key, data[key]);
-        });
-      }
+      console.log('🔄 [candidateService] Chamando proxy:', action);
+      console.log('📦 [candidateService] Payload:', payload);
 
-      console.log('🔄 Chamando Google Apps Script:', url.toString());
-
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        mode: 'cors',
+      const response = await fetch(this.scriptUrl, {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }
+        },
+        body: JSON.stringify(payload)
       });
 
-      console.log('📡 Resposta recebida - Status:', response.status);
+      console.log('📡 [candidateService] Resposta recebida - Status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Erro na resposta:', errorText);
+        console.error('❌ [candidateService] Erro na resposta:', errorText);
         throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('✅ Dados recebidos:', result);
+      console.log('✅ [candidateService] Dados recebidos:', result);
       return result;
     } catch (error) {
-      console.error('❌ Erro na comunicação com Google Apps Script:', error);
+      console.error('❌ [candidateService] Erro na comunicação:', error);
       console.error('🔍 URL configurada:', this.scriptUrl);
       console.error('🔍 Action:', action);
       console.error('🔍 Data:', data);

@@ -22,10 +22,10 @@ class GoogleSheetsService {
 
       const payload = {
         action,
-        data
+        ...data
       };
 
-      console.log('🔄 [UserService] Chamando Google Apps Script:', action);
+      console.log('🔄 [UserService] Chamando proxy:', action);
       console.log('📦 [UserService] Payload:', payload);
 
       const response = await fetch(this.scriptUrl, {
@@ -49,7 +49,7 @@ class GoogleSheetsService {
       console.log('✅ [UserService] Dados recebidos:', result);
       return result;
     } catch (error) {
-      console.error('❌ [UserService] Erro na comunicação com Google Apps Script:', error);
+      console.error('❌ [UserService] Erro na comunicação:', error);
       console.error('🔍 URL configurada:', this.scriptUrl);
       console.error('🔍 Action:', action);
       console.error('🔍 Data:', data);
