@@ -52,7 +52,7 @@ export default function ScreeningModal({
     experiencia: 0
   });
 
-  const [classification, setClassification] = useState<'classificado' | 'desclassificado' | null>(null);
+  const [classification, setClassification] = useState<'Classificado' | 'Desclassificado' | null>(null);
   const [notes, setNotes] = useState('');
 
   if (!isOpen) return null;
@@ -71,13 +71,13 @@ export default function ScreeningModal({
 
   // Função para classificar candidato
   const handleClassify = () => {
-    setClassification('classificado');
+    setClassification('Classificado');
     setCurrentStep('technical');
   };
 
   // Função para desclassificar candidato
   const handleDisqualify = async () => {
-    setClassification('desclassificado');
+    setClassification('Desclassificado');
     await submitScreening();
   };
 

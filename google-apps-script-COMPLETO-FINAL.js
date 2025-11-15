@@ -870,7 +870,7 @@ function saveScreening(params) {
     }
 
     // Salvar pontuações (apenas para classificados)
-    if (status === 'classificado') {
+    if (status === 'Classificado') {
       const capacidadeTecnicaIndex = headers.indexOf('capacidade_tecnica');
       if (capacidadeTecnicaIndex >= 0) {
         candidateSheet.getRange(rowIndex, capacidadeTecnicaIndex + 1).setValue(capacidade_tecnica);
