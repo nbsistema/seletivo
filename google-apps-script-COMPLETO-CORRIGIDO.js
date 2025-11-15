@@ -1,21 +1,3 @@
-// ============================================
-// GOOGLE APPS SCRIPT - VERSÃO COMPLETA CORRIGIDA
-// ============================================
-//
-// INSTRUÇÕES DE INSTALAÇÃO:
-// 1. Abra https://script.google.com
-// 2. Cole TODO este código (substituindo qualquer código anterior)
-// 3. Configure o SPREADSHEET_ID na linha 15
-// 4. Salve (Ctrl+S)
-// 5. Clique em "Implantar" > "Nova implantação"
-// 6. Tipo: "Aplicativo da Web"
-// 7. Execute como: "Eu"
-// 8. Quem tem acesso: "Qualquer pessoa"
-// 9. Clique em "Implantar" e copie a URL
-// 10. Cole a URL no arquivo src/contexts/AuthContext.tsx (linha 131)
-//
-// ============================================
-
 const SPREADSHEET_ID = '1iQSQ06P_OXkqxaGWN3uG5jRYFBKyjWqQyvzuGk2EplY';
 const SHEET_USUARIOS = 'USUARIOS';
 const SHEET_CANDIDATOS = 'CANDIDATOS';
@@ -25,7 +7,7 @@ const SHEET_TEMPLATES = 'TEMPLATES';
 const SHEET_ALIAS = 'ALIAS';
 
 // ============================================
-// ENTRADA - Suporta GET, POST e OPTIONS
+// ENTRADA - Suporta GET e POST
 // ============================================
 
 function doGet(e) {
@@ -37,7 +19,7 @@ function doPost(e) {
 }
 
 // ============================================
-// ROTEAMENTO COM CORS
+// ROTEAMENTO
 // ============================================
 
 function handleRequest(e) {
@@ -49,6 +31,7 @@ function handleRequest(e) {
     Logger.log('📦 Parâmetros: ' + JSON.stringify(params));
 
     const routes = {
+      // Usuários
       'getUserRole': getUserRole,
       'getAllUsers': getAllUsers,
       'getAnalysts': getAnalysts,
@@ -56,6 +39,8 @@ function handleRequest(e) {
       'createUser': createUser,
       'updateUser': updateUser,
       'deleteUser': deleteUser,
+
+      // Candidatos
       'getCandidates': getCandidates,
       'getCandidate': getCandidate,
       'addCandidate': addCandidate,
@@ -66,20 +51,30 @@ function handleRequest(e) {
       'updateCandidateStatus': updateCandidateStatus,
       'getCandidatesByStatus': getCandidatesByStatus,
       'saveScreening': saveScreening,
+
+      // Entrevistas
       'moveToInterview': moveToInterview,
       'getInterviewCandidates': getInterviewCandidates,
       'allocateToInterviewer': allocateToInterviewer,
       'getInterviewerCandidates': getInterviewerCandidates,
       'saveInterviewEvaluation': saveInterviewEvaluation,
+
+      // Mensagens
       'sendMessages': sendMessages,
       'logMessage': logMessage,
       'updateMessageStatus': updateMessageStatus,
       'getMessageTemplates': getMessageTemplates,
       'getEmailAliases': getEmailAliases,
+
+      // Relatórios
       'getStatistics': getStatistics,
       'getReportStats': getReportStats,
       'getReport': getReport,
+
+      // Motivos
       'getDisqualificationReasons': getDisqualificationReasons,
+
+      // Teste
       'test': testConnection
     };
 
@@ -100,16 +95,13 @@ function handleRequest(e) {
 
 function parseRequest(e) {
   try {
-    if (e && e.postData && e.postData.contents) {
+    if (e.postData && e.postData.contents) {
       return JSON.parse(e.postData.contents);
     }
-    if (e && e.parameter) {
-      return e.parameter;
-    }
-    return {};
+    return e.parameter || {};
   } catch (error) {
     Logger.log('Erro ao fazer parse: ' + error.toString());
-    return {};
+    return e.parameter || {};
   }
 }
 
@@ -122,11 +114,11 @@ function getSheet(name) {
   return ss.getSheetByName(name);
 }
 
-function createResponse(data, statusCode) {
-  // Cria a resposta em JSON com headers CORS
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+function createResponse(data, statusCode = 200) {
+  const output = ContentService.createTextOutput();
+  output.setMimeType(ContentService.MimeType.JSON);
+  output.setContent(JSON.stringify(data));
+  return output;
 }
 
 function getCurrentTimestamp() {
@@ -191,13 +183,11 @@ function getUserRole(params) {
         }
 
         return createResponse({
-          success: true,
-          data: {
-            email: data[i][emailIndex],
-            name: data[i][nomeIndex] || '',
-            role: data[i][roleIndex] || 'analista',
-            active: data[i][ativoIndex] === true || data[i][ativoIndex] === 'TRUE'
-          }
+          email: data[i][emailIndex],
+          nome: data[i][nomeIndex] || '',
+          role: data[i][roleIndex] || 'analista',
+          ativo: data[i][ativoIndex] === true || data[i][ativoIndex] === 'TRUE',
+          success: true
         });
       }
     }
@@ -226,7 +216,7 @@ function getAllUsers(params) {
 
     for (let i = 1; i < data.length; i++) {
       const user = {};
-      headers.forEach(function(header, index) {
+      headers.forEach((header, index) => {
         user[header] = data[i][index];
       });
 
@@ -273,7 +263,7 @@ function getAnalysts(params) {
 
     for (let i = 1; i < data.length; i++) {
       const user = {};
-      headers.forEach(function(header, index) {
+      headers.forEach((header, index) => {
         user[header] = data[i][index];
       });
 
@@ -316,7 +306,7 @@ function getInterviewers(params) {
 
     for (let i = 1; i < data.length; i++) {
       const user = {};
-      headers.forEach(function(header, index) {
+      headers.forEach((header, index) => {
         user[header] = data[i][index];
       });
 
@@ -472,7 +462,7 @@ function getCandidates(params) {
 
     for (let i = 1; i < data.length; i++) {
       const candidate = {};
-      headers.forEach(function(header, index) {
+      headers.forEach((header, index) => {
         candidate[header] = data[i][index];
       });
 
@@ -507,7 +497,7 @@ function getCandidate(params) {
       const cpf = data[i][headers.indexOf('CPF')];
       if (cpf && cpf.toString() === id.toString()) {
         const candidate = {};
-        headers.forEach(function(header, index) {
+        headers.forEach((header, index) => {
           candidate[header] = data[i][index];
         });
         return createResponse({ success: true, candidate: candidate });
@@ -532,7 +522,7 @@ function addCandidate(params) {
     const newRow = [];
     const timestamp = getCurrentTimestamp();
 
-    headers.forEach(function(header) {
+    headers.forEach(header => {
       if (header === 'created_at' || header === 'DataCadastro') {
         newRow.push(timestamp);
       } else if (header === 'updated_at') {
@@ -575,7 +565,7 @@ function updateCandidate(params) {
 
     const headers = getHeaders(candidateSheet);
 
-    Object.keys(params).forEach(function(key) {
+    Object.keys(params).forEach(key => {
       if (key !== 'action' && key !== 'registration_number' && key !== 'id' && key !== 'CPF' && key !== 'candidateCPF') {
         const colIndex = headers.indexOf(key);
         if (colIndex >= 0) {
@@ -634,7 +624,7 @@ function assignCandidates(params) {
       return createResponse({ error: 'IDs dos candidatos e email do analista são obrigatórios' }, 400);
     }
 
-    const ids = typeof candidateIds === 'string' ? candidateIds.split(',').map(function(id) { return id.trim(); }) : candidateIds;
+    const ids = typeof candidateIds === 'string' ? candidateIds.split(',').map(id => id.trim()) : candidateIds;
     const candidateSheet = getSheet(SHEET_CANDIDATOS);
 
     if (!candidateSheet) {
@@ -655,7 +645,7 @@ function assignCandidates(params) {
     const data = candidateSheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       const cpf = data[i][cpfIndex];
-      if (cpf && ids.indexOf(cpf.toString()) !== -1) {
+      if (cpf && ids.includes(cpf.toString())) {
         if (assignedToIndex >= 0) {
           candidateSheet.getRange(i + 1, assignedToIndex + 1).setValue(analystEmail);
         }
@@ -704,11 +694,11 @@ function bulkUpdateCandidates(params) {
 
     let updated = 0;
 
-    updateList.forEach(function(update) {
+    updateList.forEach(update => {
       const rowIndex = findRowByValue(candidateSheet, 'CPF', update.id);
       if (rowIndex > 0) {
         const headers = getHeaders(candidateSheet);
-        Object.keys(update).forEach(function(key) {
+        Object.keys(update).forEach(key => {
           if (key !== 'id') {
             const colIndex = headers.indexOf(key);
             if (colIndex >= 0) {
@@ -800,54 +790,6 @@ function updateCandidateStatus(params) {
   }
 }
 
-function getCandidatesByStatus(params) {
-  try {
-    const status = params.status;
-    if (!status) {
-      return createResponse({ error: 'Status é obrigatório' }, 400);
-    }
-
-    Logger.log('📊 getCandidatesByStatus - Status solicitado: ' + status);
-
-    const candidateSheet = getSheet(SHEET_CANDIDATOS);
-    if (!candidateSheet) {
-      return createResponse({ success: true, data: [] });
-    }
-
-    const data = candidateSheet.getDataRange().getValues();
-    if (data.length <= 1) {
-      return createResponse({ success: true, data: [] });
-    }
-
-    const headers = data[0];
-    const statusTriagemIndex = headers.indexOf('status_triagem');
-
-    if (statusTriagemIndex === -1) {
-      Logger.log('⚠️ Coluna status_triagem não encontrada');
-      return createResponse({ success: true, data: [] });
-    }
-
-    const candidates = [];
-
-    for (let i = 1; i < data.length; i++) {
-      const statusTriagem = data[i][statusTriagemIndex];
-      if (statusTriagem === status) {
-        const candidate = {};
-        headers.forEach(function(header, index) {
-          candidate[header] = data[i][index];
-        });
-        candidates.push(candidate);
-      }
-    }
-
-    Logger.log('✅ Total de candidatos com status "' + status + '": ' + candidates.length);
-    return createResponse({ success: true, data: candidates });
-  } catch (error) {
-    Logger.log('❌ Erro em getCandidatesByStatus: ' + error.toString());
-    return createResponse({ error: error.toString() }, 500);
-  }
-}
-
 function saveScreening(params) {
   try {
     Logger.log('🔵 saveScreening - Parâmetros recebidos: ' + JSON.stringify(params));
@@ -886,22 +828,26 @@ function saveScreening(params) {
 
     Logger.log('📝 Atualizando candidato na linha: ' + rowIndex);
 
+    // Atualizar status de triagem
     const statusTriagemIndex = headers.indexOf('status_triagem');
     if (statusTriagemIndex >= 0) {
       candidateSheet.getRange(rowIndex, statusTriagemIndex + 1).setValue(status);
       Logger.log('✅ Status atualizado: ' + status);
     }
 
+    // Atualizar data e hora da triagem
     const dataTriagemIndex = headers.indexOf('data_hora_triagem');
     if (dataTriagemIndex >= 0) {
       candidateSheet.getRange(rowIndex, dataTriagemIndex + 1).setValue(screenedAt);
     }
 
+    // Atualizar analista responsável
     const analistaTriagemIndex = headers.indexOf('analista_triagem');
     if (analistaTriagemIndex >= 0 && analystEmail) {
       candidateSheet.getRange(rowIndex, analistaTriagemIndex + 1).setValue(analystEmail);
     }
 
+    // Salvar verificação de documentos
     for (let i = 1; i <= 5; i++) {
       const docKey = 'documento_' + i;
       if (documents[docKey]) {
@@ -912,6 +858,7 @@ function saveScreening(params) {
       }
     }
 
+    // Salvar pontuações (apenas para classificados)
     if (status === 'Classificado') {
       const capacidadeTecnicaIndex = headers.indexOf('capacidade_tecnica');
       if (capacidadeTecnicaIndex >= 0) {
@@ -929,6 +876,7 @@ function saveScreening(params) {
       }
     }
 
+    // Salvar observações
     if (notes) {
       const notesIndex = headers.indexOf('observacoes_triagem');
       if (notesIndex >= 0) {
@@ -936,6 +884,7 @@ function saveScreening(params) {
       }
     }
 
+    // Atualizar timestamp de atualização
     const updatedAtIndex = headers.indexOf('updated_at');
     if (updatedAtIndex >= 0) {
       candidateSheet.getRange(rowIndex, updatedAtIndex + 1).setValue(timestamp);
@@ -953,6 +902,49 @@ function saveScreening(params) {
   }
 }
 
+function getCandidatesByStatus(params) {
+  try {
+    const status = params.status;
+    if (!status) {
+      return createResponse({ error: 'Status é obrigatório' }, 400);
+    }
+
+    const candidateSheet = getSheet(SHEET_CANDIDATOS);
+    if (!candidateSheet) {
+      return createResponse({ success: true, data: [] });
+    }
+
+    const data = candidateSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return createResponse({ success: true, data: [] });
+    }
+
+    const headers = data[0];
+    const statusIndex = headers.indexOf('status_triagem');
+
+    if (statusIndex === -1) {
+      return createResponse({ success: true, data: [] });
+    }
+
+    const candidates = [];
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][statusIndex] === status) {
+        const candidate = {};
+        headers.forEach((header, index) => {
+          candidate[header] = data[i][index];
+        });
+        candidates.push(candidate);
+      }
+    }
+
+    return createResponse({ success: true, data: candidates });
+  } catch (error) {
+    Logger.log('Erro em getCandidatesByStatus: ' + error.toString());
+    return createResponse({ error: error.toString() }, 500);
+  }
+}
+
 // ============================================
 // FUNÇÕES DE ENTREVISTA
 // ============================================
@@ -964,7 +956,7 @@ function moveToInterview(params) {
       return createResponse({ error: 'IDs dos candidatos são obrigatórios' }, 400);
     }
 
-    const ids = typeof candidateIds === 'string' ? candidateIds.split(',').map(function(id) { return id.trim(); }) : candidateIds;
+    const ids = typeof candidateIds === 'string' ? candidateIds.split(',').map(id => id.trim()) : candidateIds;
     const candidateSheet = getSheet(SHEET_CANDIDATOS);
 
     if (!candidateSheet) {
@@ -982,7 +974,7 @@ function moveToInterview(params) {
     const data = candidateSheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       const cpf = data[i][cpfIndex];
-      if (cpf && ids.indexOf(cpf.toString()) !== -1) {
+      if (cpf && ids.includes(cpf.toString())) {
         if (statusEntrevistaIndex >= 0) {
           candidateSheet.getRange(i + 1, statusEntrevistaIndex + 1).setValue('Aguardando Entrevista');
         }
@@ -1029,7 +1021,7 @@ function getInterviewCandidates(params) {
       const status = data[i][statusEntrevistaIndex];
       if (status === 'Aguardando Entrevista' || status === 'Em Entrevista') {
         const candidate = {};
-        headers.forEach(function(header, index) {
+        headers.forEach((header, index) => {
           candidate[header] = data[i][index];
         });
         candidates.push(candidate);
@@ -1053,7 +1045,7 @@ function allocateToInterviewer(params) {
       return createResponse({ error: 'IDs dos candidatos e email do entrevistador são obrigatórios' }, 400);
     }
 
-    const ids = typeof candidateIds === 'string' ? candidateIds.split(',').map(function(id) { return id.trim(); }) : candidateIds;
+    const ids = typeof candidateIds === 'string' ? candidateIds.split(',').map(id => id.trim()) : candidateIds;
     const candidateSheet = getSheet(SHEET_CANDIDATOS);
 
     if (!candidateSheet) {
@@ -1074,7 +1066,7 @@ function allocateToInterviewer(params) {
     const data = candidateSheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       const cpf = data[i][cpfIndex];
-      if (cpf && ids.indexOf(cpf.toString()) !== -1) {
+      if (cpf && ids.includes(cpf.toString())) {
         if (entrevistadorIndex >= 0) {
           candidateSheet.getRange(i + 1, entrevistadorIndex + 1).setValue(interviewerEmail);
         }
@@ -1134,7 +1126,7 @@ function getInterviewerCandidates(params) {
     for (let i = 1; i < data.length; i++) {
       if (data[i][entrevistadorIndex] === interviewerEmail) {
         const candidate = {};
-        headers.forEach(function(header, index) {
+        headers.forEach((header, index) => {
           candidate[header] = data[i][index];
         });
         candidates.push(candidate);
@@ -1186,7 +1178,7 @@ function saveInterviewEvaluation(params) {
       'adaptacao_perfis'
     ];
 
-    fieldsToUpdate.forEach(function(field) {
+    fieldsToUpdate.forEach(field => {
       if (params[field] !== undefined) {
         const colIndex = headers.indexOf(field);
         if (colIndex >= 0) {
@@ -1237,7 +1229,7 @@ function sendMessages(params) {
       return createResponse({ error: 'Parâmetros insuficientes' }, 400);
     }
 
-    const ids = typeof candidateIds === 'string' ? candidateIds.split(',').map(function(id) { return id.trim(); }) : candidateIds;
+    const ids = typeof candidateIds === 'string' ? candidateIds.split(',').map(id => id.trim()) : candidateIds;
 
     const result = {
       success: true,
@@ -1246,7 +1238,7 @@ function sendMessages(params) {
       failed: 0
     };
 
-    ids.forEach(function(id) {
+    ids.forEach(id => {
       logMessage({
         registrationNumber: id,
         messageType: messageType,
@@ -1301,7 +1293,7 @@ function updateMessageStatus(params) {
       return createResponse({ error: 'Parâmetros insuficientes' }, 400);
     }
 
-    const ids = typeof registrationNumbers === 'string' ? registrationNumbers.split(',').map(function(id) { return id.trim(); }) : registrationNumbers;
+    const ids = typeof registrationNumbers === 'string' ? registrationNumbers.split(',').map(id => id.trim()) : registrationNumbers;
     const candidateSheet = getSheet(SHEET_CANDIDATOS);
 
     if (!candidateSheet) {
@@ -1322,7 +1314,7 @@ function updateMessageStatus(params) {
 
     for (let i = 1; i < data.length; i++) {
       const cpf = data[i][cpfIndex];
-      if (cpf && ids.indexOf(cpf.toString()) !== -1) {
+      if (cpf && ids.includes(cpf.toString())) {
         candidateSheet.getRange(i + 1, statusIndex + 1).setValue(status);
         updated++;
       }
@@ -1356,7 +1348,7 @@ function getMessageTemplates(params) {
 
     for (let i = 1; i < data.length; i++) {
       const template = {};
-      headers.forEach(function(header, index) {
+      headers.forEach((header, index) => {
         template[header] = data[i][index];
       });
       if (template.nome) {
@@ -1388,7 +1380,7 @@ function getEmailAliases(params) {
 
     for (let i = 1; i < data.length; i++) {
       const alias = {};
-      headers.forEach(function(header, index) {
+      headers.forEach((header, index) => {
         alias[header] = data[i][index];
       });
       if (alias.email) {
@@ -1522,7 +1514,7 @@ function getReport(params) {
 
     for (let i = 1; i < data.length; i++) {
       const candidate = {};
-      headers.forEach(function(header, index) {
+      headers.forEach((header, index) => {
         candidate[header] = data[i][index];
       });
       candidates.push(candidate);
@@ -1556,7 +1548,7 @@ function getDisqualificationReasons(params) {
 
     for (let i = 1; i < data.length; i++) {
       const reason = {};
-      headers.forEach(function(header, index) {
+      headers.forEach((header, index) => {
         reason[header] = data[i][index];
       });
       if (reason.id || reason.motivo) {
@@ -1579,7 +1571,7 @@ function testConnection(params) {
   try {
     const ss = getSpreadsheet();
     const sheets = ss.getSheets();
-    const sheetNames = sheets.map(function(sheet) { return sheet.getName(); });
+    const sheetNames = sheets.map(sheet => sheet.getName());
 
     return createResponse({
       success: true,
