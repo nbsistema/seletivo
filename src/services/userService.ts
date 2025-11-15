@@ -22,7 +22,7 @@ class GoogleSheetsService {
 
       const payload = {
         action,
-        ...data
+        data
       };
 
       console.log('🔄 [UserService] Chamando Google Apps Script:', action);
@@ -30,7 +30,6 @@ class GoogleSheetsService {
 
       const response = await fetch(this.scriptUrl, {
         method: 'POST',
-        mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -59,7 +58,7 @@ class GoogleSheetsService {
   }
 }
 
-const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwRZ7vLEm4n8iha2GJSnIfCEjhHejRLme-OkIkp_qu6/dev';
+const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '/.netlify/functions/google-sheets-proxy';
 const sheetsService = new GoogleSheetsService(SCRIPT_URL);
 
 export async function getUsers(): Promise<User[]> {
