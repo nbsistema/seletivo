@@ -76,9 +76,8 @@ class GoogleSheetsService {
     const result = await this.fetchData('getUserRole', { email });
     console.log('📥 getUserByEmail - Resultado COMPLETO:', JSON.stringify(result, null, 2));
 
-    if (result && !result.error) {
-      // Google Apps Script retorna { success: true, data: {...} }
-      const userData = result.data || result;
+    if (result && result.success && result.data) {
+      const userData = result.data;
       console.log('📦 getUserByEmail - Dados extraídos:', JSON.stringify(userData, null, 2));
 
       const user = {
@@ -86,7 +85,7 @@ class GoogleSheetsService {
         email: userData.email,
         name: userData.name || userData.nome || userData.email,
         role: userData.role,
-        active: true,
+        active: userData.active !== undefined ? userData.active : true,
         password: ''
       };
 
@@ -96,7 +95,7 @@ class GoogleSheetsService {
       return user;
     }
 
-    console.error('❌ getUserByEmail - Sem resultado válido');
+    console.error('❌ getUserByEmail - Sem resultado válido:', result);
     return null;
   }
 
@@ -104,9 +103,8 @@ class GoogleSheetsService {
     const result = await this.fetchData('getUserRole', { email: id });
     console.log('📥 getUserById - Resultado COMPLETO:', JSON.stringify(result, null, 2));
 
-    if (result && !result.error) {
-      // Google Apps Script retorna { success: true, data: {...} }
-      const userData = result.data || result;
+    if (result && result.success && result.data) {
+      const userData = result.data;
       console.log('📦 getUserById - Dados extraídos:', JSON.stringify(userData, null, 2));
 
       const user = {
@@ -114,7 +112,7 @@ class GoogleSheetsService {
         email: userData.email,
         name: userData.name || userData.nome || userData.email,
         role: userData.role,
-        active: true
+        active: userData.active !== undefined ? userData.active : true
       };
 
       console.log('✅ getUserById - User FINAL:', JSON.stringify(user, null, 2));
@@ -123,7 +121,7 @@ class GoogleSheetsService {
       return user;
     }
 
-    console.error('❌ getUserById - Sem resultado válido');
+    console.error('❌ getUserById - Sem resultado válido:', result);
     return null;
   }
 }
