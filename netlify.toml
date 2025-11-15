@@ -5,7 +5,7 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  VITE_GOOGLE_SCRIPT_URL = "/.netlify/functions/google-sheets-proxy"
+  VITE_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxfl0gWq3-dnZmYcz5AIHkpOyC1XdRb8QdaMRQTQZnn5sqyQZvV3qhCevhXuFHGYBk0/exec"
 
 [[redirects]]
   from = "/*"

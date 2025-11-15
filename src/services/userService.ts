@@ -58,7 +58,7 @@ class GoogleSheetsService {
   }
 }
 
-const SCRIPT_URL = '/.netlify/functions/google-sheets-proxy';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxfl0gWq3-dnZmYcz5AIHkpOyC1XdRb8QdaMRQTQZnn5sqyQZvV3qhCevhXuFHGYBk0/exec';
 const sheetsService = new GoogleSheetsService(SCRIPT_URL);
 
 export async function getUsers(): Promise<User[]> {
