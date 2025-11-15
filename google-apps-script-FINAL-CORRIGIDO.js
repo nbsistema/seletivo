@@ -31,11 +31,19 @@ const SHEET_ALIAS = 'ALIAS';
 // ============================================
 
 function doGet(e) {
-  return handleRequest(e);
+  const output = handleRequest(e);
+  // Adicionar headers CORS
+  const response = ContentService.createTextOutput(output.getContent());
+  response.setMimeType(ContentService.MimeType.JSON);
+  return response;
 }
 
 function doPost(e) {
-  return handleRequest(e);
+  const output = handleRequest(e);
+  // Adicionar headers CORS (mesmo que não seja necessário via proxy)
+  const response = ContentService.createTextOutput(output.getContent());
+  response.setMimeType(ContentService.MimeType.JSON);
+  return response;
 }
 
 // ============================================
@@ -84,7 +92,12 @@ function createResponse(data) {
 function parseRequest(e) {
   try {
     if (e.postData && e.postData.contents) {
-      return JSON.parse(e.postData.contents);
+      const parsed = JSON.parse(e.postData.contents);
+      // Se vier do proxy Netlify, extrair action e data
+      if (parsed.action && parsed.data) {
+        return { action: parsed.action, ...parsed.data };
+      }
+      return parsed;
     }
     return e.parameter || {};
   } catch (error) {
