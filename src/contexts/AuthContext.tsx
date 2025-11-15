@@ -35,36 +35,39 @@ class GoogleSheetsService {
         throw new Error('URL do Google Script não configurada. Verifique o arquivo .env');
       }
 
-      const payload = {
-        action,
-        ...data
-      };
+      const url = new URL(this.scriptUrl);
+      url.searchParams.append('action', action);
 
-      console.log('🔄 [AuthContext] Chamando proxy:', action);
-      console.log('📦 [AuthContext] Payload:', payload);
+      if (data) {
+        Object.keys(data).forEach(key => {
+          url.searchParams.append(key, String(data[key]));
+        });
+      }
 
-      const response = await fetch(this.scriptUrl, {
-        method: 'POST',
+      console.log('🔄 Chamando Google Apps Script:', url.toString());
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        mode: 'cors',
+        redirect: 'follow',
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json'
-        },
-        body: JSON.stringify(payload)
+        }
       });
 
-      console.log('📡 [AuthContext] Resposta recebida - Status:', response.status);
+      console.log('📡 Resposta recebida - Status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ [AuthContext] Erro na resposta:', errorText);
+        console.error('❌ Erro na resposta:', errorText);
         throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('✅ [AuthContext] Dados recebidos:', result);
+      console.log('✅ Dados recebidos:', result);
       return result;
     } catch (error) {
-      console.error('❌ [AuthContext] Erro na comunicação:', error);
+      console.error('❌ Erro na comunicação com Google Apps Script:', error);
       console.error('🔍 URL configurada:', this.scriptUrl);
       console.error('🔍 Action:', action);
       console.error('🔍 Data:', data);
@@ -76,8 +79,9 @@ class GoogleSheetsService {
     const result = await this.fetchData('getUserRole', { email });
     console.log('📥 getUserByEmail - Resultado COMPLETO:', JSON.stringify(result, null, 2));
 
-    if (result && result.success && result.data) {
-      const userData = result.data;
+    if (result && !result.error) {
+      // Google Apps Script retorna { success: true, data: {...} }
+      const userData = result.data || result;
       console.log('📦 getUserByEmail - Dados extraídos:', JSON.stringify(userData, null, 2));
 
       const user = {
@@ -85,7 +89,7 @@ class GoogleSheetsService {
         email: userData.email,
         name: userData.name || userData.nome || userData.email,
         role: userData.role,
-        active: userData.active !== undefined ? userData.active : true,
+        active: true,
         password: ''
       };
 
@@ -95,7 +99,7 @@ class GoogleSheetsService {
       return user;
     }
 
-    console.error('❌ getUserByEmail - Sem resultado válido:', result);
+    console.error('❌ getUserByEmail - Sem resultado válido');
     return null;
   }
 
@@ -103,8 +107,9 @@ class GoogleSheetsService {
     const result = await this.fetchData('getUserRole', { email: id });
     console.log('📥 getUserById - Resultado COMPLETO:', JSON.stringify(result, null, 2));
 
-    if (result && result.success && result.data) {
-      const userData = result.data;
+    if (result && !result.error) {
+      // Google Apps Script retorna { success: true, data: {...} }
+      const userData = result.data || result;
       console.log('📦 getUserById - Dados extraídos:', JSON.stringify(userData, null, 2));
 
       const user = {
@@ -112,7 +117,7 @@ class GoogleSheetsService {
         email: userData.email,
         name: userData.name || userData.nome || userData.email,
         role: userData.role,
-        active: userData.active !== undefined ? userData.active : true
+        active: true
       };
 
       console.log('✅ getUserById - User FINAL:', JSON.stringify(user, null, 2));
@@ -121,12 +126,12 @@ class GoogleSheetsService {
       return user;
     }
 
-    console.error('❌ getUserById - Sem resultado válido:', result);
+    console.error('❌ getUserById - Sem resultado válido');
     return null;
   }
 }
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxfl0gWq3-dnZmYcz5AIHkpOyC1XdRb8QdaMRQTQZnn5sqyQZvV3qhCevhXuFHGYBk0/exec';
+const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwQK8whrNC039L5V-7JeVLAjkdsrPM65L3YhdCPPWrF782uQv5UTdsitYMwUS9BQuyj/exec';
 const sheetsService = new GoogleSheetsService(SCRIPT_URL);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -247,3 +252,4 @@ export function useAuth() {
   }
   return context;
 }
+
