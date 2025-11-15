@@ -1,6 +1,6 @@
 [build]
-  command = "npm run build"
-  publish = "dist"
+  publish = "dist"  # ou a pasta do seu build
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18"
@@ -13,6 +13,6 @@
     Access-Control-Allow-Headers = "Content-Type"
 
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+ from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
