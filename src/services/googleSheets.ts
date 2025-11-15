@@ -1,4 +1,4 @@
-const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbz6BmO1rhI8LTRNzakiQ8ryL1cO2tAaNSFfWx9fh0ZFHqZ0b2FgW4WJxg19B8VC5WkH/exec';
+const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '/.netlify/functions/google-sheets-proxy';
 
 interface GoogleSheetsResponse {
   success: boolean;
@@ -11,12 +11,11 @@ async function makeRequest(action: string, params: any = {}): Promise<GoogleShee
   try {
     const payload = {
       action,
-      ...params
+      data: params
     };
 
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',
-      mode: 'cors',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
