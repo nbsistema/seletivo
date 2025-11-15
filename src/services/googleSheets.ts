@@ -1,4 +1,4 @@
-const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '/.netlify/functions/google-sheets-proxy';
+const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
 
 interface GoogleSheetsResponse {
   success: boolean;

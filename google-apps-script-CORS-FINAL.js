@@ -1,11 +1,13 @@
 // ============================================
-// GOOGLE APPS SCRIPT - SISTEMA COMPLETO
+// GOOGLE APPS SCRIPT - SISTEMA COMPLETO COM CORS
 // ============================================
 //
 // INSTRUÇÕES:
 // 1. Cole este código completo no Google Apps Script
 // 2. Configure o SPREADSHEET_ID abaixo
-// 3. Implante como Web App
+// 3. Implante como Web App com as seguintes configurações:
+//    - Execute as: Me (seu email)
+//    - Who has access: Anyone
 //
 // ============================================
 
@@ -18,6 +20,19 @@ const SHEET_TEMPLATES = 'TEMPLATES';
 const SHEET_ALIAS = 'ALIAS';
 
 // ============================================
+// CORS HEADERS
+// ============================================
+
+function getCorsHeaders() {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Content-Type': 'application/json'
+  };
+}
+
+// ============================================
 // ENTRADA - Suporta GET e POST
 // ============================================
 
@@ -27,6 +42,12 @@ function doGet(e) {
 
 function doPost(e) {
   return handleRequest(e);
+}
+
+function doOptions(e) {
+  return ContentService
+    .createTextOutput('')
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 // ============================================
@@ -838,26 +859,22 @@ function saveScreening(params) {
 
     Logger.log('📝 Atualizando candidato na linha: ' + rowIndex);
 
-    // Atualizar status de triagem
     const statusTriagemIndex = headers.indexOf('status_triagem');
     if (statusTriagemIndex >= 0) {
       candidateSheet.getRange(rowIndex, statusTriagemIndex + 1).setValue(status);
       Logger.log('✅ Status atualizado: ' + status);
     }
 
-    // Atualizar data e hora da triagem
     const dataTriagemIndex = headers.indexOf('data_hora_triagem');
     if (dataTriagemIndex >= 0) {
       candidateSheet.getRange(rowIndex, dataTriagemIndex + 1).setValue(screenedAt);
     }
 
-    // Atualizar analista responsável
     const analistaTriagemIndex = headers.indexOf('analista_triagem');
     if (analistaTriagemIndex >= 0 && analystEmail) {
       candidateSheet.getRange(rowIndex, analistaTriagemIndex + 1).setValue(analystEmail);
     }
 
-    // Salvar verificação de documentos
     for (let i = 1; i <= 5; i++) {
       const docKey = 'documento_' + i;
       if (documents[docKey]) {
@@ -868,7 +885,6 @@ function saveScreening(params) {
       }
     }
 
-    // Salvar pontuações (apenas para classificados)
     if (status === 'Classificado') {
       const capacidadeTecnicaIndex = headers.indexOf('capacidade_tecnica');
       if (capacidadeTecnicaIndex >= 0) {
@@ -886,7 +902,6 @@ function saveScreening(params) {
       }
     }
 
-    // Salvar observações
     if (notes) {
       const notesIndex = headers.indexOf('observacoes_triagem');
       if (notesIndex >= 0) {
@@ -894,7 +909,6 @@ function saveScreening(params) {
       }
     }
 
-    // Atualizar timestamp de atualização
     const updatedAtIndex = headers.indexOf('updated_at');
     if (updatedAtIndex >= 0) {
       candidateSheet.getRange(rowIndex, updatedAtIndex + 1).setValue(timestamp);
