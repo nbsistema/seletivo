@@ -179,5 +179,9 @@ export const googleSheetsService = {
 
   async getEmailAliases(): Promise<GoogleSheetsResponse> {
     return makeRequest('getEmailAliases');
+  },
+
+  async saveScreening(screeningData: any): Promise<GoogleSheetsResponse> {
+    return makeRequest('saveScreening', screeningData);
   }
 };

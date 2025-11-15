@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Loader2, CheckCircle, Clock, AlertCircle, XCircle, Eye } from 'lucide-react';
 import DocumentViewer from './DocumentViewer';
 import DisqualificationModal from './DisqualificationModal';
+import ScreeningModal from './ScreeningModal';
 
 interface AnalystDashboardProps {
   onCandidateTriaged?: () => void;
@@ -17,6 +18,7 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDisqualificationModal, setShowDisqualificationModal] = useState(false);
+  const [showScreeningModal, setShowScreeningModal] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     pendente: 0,
@@ -320,6 +322,18 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
               </div>
 
               <div className="bg-white border-t p-4">
+                <div className="flex items-center justify-center mb-4">
+                  <button
+                    onClick={() => setShowScreeningModal(true)}
+                    disabled={!selectedCandidate}
+                    className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 font-medium shadow-md"
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                    Iniciar Triagem Completa
+                  </button>
+                </div>
+
+                <div className="border-t pt-4">
                 <div className="flex items-center justify-between">
                   <div className="flex gap-2">
                     <button
@@ -365,6 +379,7 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
                     </button>
                   </div>
                 </div>
+                </div>
               </div>
 
               <DisqualificationModal
@@ -372,6 +387,19 @@ export default function AnalystDashboard({ onCandidateTriaged }: AnalystDashboar
                 onClose={() => setShowDisqualificationModal(false)}
                 onConfirm={handleDisqualify}
                 candidateName={selectedCandidate?.NOMECOMPLETO || selectedCandidate?.full_name || ''}
+              />
+
+              <ScreeningModal
+                isOpen={showScreeningModal}
+                onClose={() => setShowScreeningModal(false)}
+                candidate={selectedCandidate}
+                onScreeningComplete={async () => {
+                  await loadCandidates();
+                  await loadStats();
+                  if (onCandidateTriaged) {
+                    onCandidateTriaged();
+                  }
+                }}
               />
             </>
           ) : (
