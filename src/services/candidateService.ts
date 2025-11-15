@@ -47,7 +47,7 @@ class GoogleSheetsService {
   private scriptUrl: string;
 
   constructor() {
-    this.scriptUrl = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '/.netlify/functions/google-sheets-proxy';
+    this.scriptUrl = '/.netlify/functions/google-sheets-proxy';
   }
 
   async fetchData(action: string, data?: any): Promise<any> {

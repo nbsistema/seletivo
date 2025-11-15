@@ -128,7 +128,7 @@ class GoogleSheetsService {
   }
 }
 
-const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '/.netlify/functions/google-sheets-proxy';
+const SCRIPT_URL = '/.netlify/functions/google-sheets-proxy';
 const sheetsService = new GoogleSheetsService(SCRIPT_URL);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
